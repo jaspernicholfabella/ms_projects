@@ -1,7 +1,9 @@
 """website builder tracker on https://trends.builtwith.com/cms/simple-website-builder"""
 import sys
 import os
+import glob
 import time
+import re
 from datetime import datetime
 from pathlib import Path
 import pandas as pd
@@ -10,13 +12,16 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from dateutil.relativedelta import relativedelta
+from bs4 import BeautifulSoup
+from lxml import etree
 
 sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
 from pyersq.row import Row
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
+from pyersq.zenscraper import ZenScraper
 
-class BWTracker(Runner):
+class Ferc(Runner):
     """Collect data from website"""
     def __init__(self, argv):
         super().__init__(argv, output_prefix='ferc', output_subdir="raw", output_type='csv')
@@ -37,15 +42,15 @@ class BWTracker(Runner):
         self.data_table = Row(self.datapoints["data_table"])
         self.data_list = []
 
-
     def get_raw(self):
         """ Get raw data from source"""
         fetchdate = datetime.now().strftime('%m/%d/%Y')
         self.data_table.fetchdate = fetchdate
-        download_dir = os.path.abspath(f'{self.outdir}/raw/downloads')
-        Path(download_dir).mkdir(parents=True, exist_ok=True)
+
         retry = 0
         for to_find in self.datapoints["to_find"]:
+            download_dir = os.path.abspath(f'{self.outdir}/input/{datetime.now().strftime("%Y_%m_%d")}/ferc/{to_find.strip().lower().replace(" ", "_")}')
+            Path(download_dir).mkdir(parents=True, exist_ok=True)
             while True:
                 is_file_downloaded = self.download_source_file(download_dir, to_find)
                 if is_file_downloaded:
@@ -55,6 +60,12 @@ class BWTracker(Runner):
                 retry += 1
 
         return self.data_list
+
+    def normalize(self,raw):
+        """Save raw data to file"""
+        df = pd.DataFrame(raw, columns=self.data_table.header()[:-1])
+        df.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"], value=["", ""], regex=True, inplace=True)
+        return df
 
     def download_source_file(self,download_dir, to_find):
         """
@@ -91,83 +102,42 @@ class BWTracker(Runner):
                     break
 
             driver.find_element(By.XPATH, "//span[contains(text(), 'html')]/parent::a").click()
+            time.sleep(30)
 
-            filename = self.wait_file_complete(300, driver)
-            new_file_path = f'{download_dir}/{to_find.lower().strip().replace(" ","_")}.html'
-            old_file_path = f'{download_dir}/{filename}'
-            if os.path.exists(new_file_path):
-                os.remove(new_file_path)
             try:
-                os.rename(old_file_path, new_file_path)
-            except FileNotFoundError:
-                if os.path.exists(old_file_path):
-                    os.remove(old_file_path)
+                list_of_files = glob.glob(f'{download_dir}/*.html')  # * means all if need specific format then *.csv
+                latest_file = max(list_of_files, key=os.path.getctime)
+
+            except ValueError:
                 return False
 
-            self.delete_all_tab(driver)
 
-            driver.get(new_file_path)
+            file = open(latest_file, 'r').read()
+            soup = BeautifulSoup(file, "lxml")
+            dom = etree.HTML(str(soup))
+
             self.data_list.append([self.data_table.fetchdate, to_find, *row_data,
-                                   self.search_downloaded_html(driver, 5, self.datapoints['xpath_for_mining']['operating_revenues']),
-                                   self.search_downloaded_html(driver, 5, self.datapoints['xpath_for_mining']['operating_expenses']),
-                                   self.search_downloaded_html(driver, 2, self.datapoints['xpath_for_mining']['depreciation']),
-                                   self.search_downloaded_html(driver, 2, self.datapoints['xpath_for_mining']['amortization'])])
+                                   self.search_downloaded_html(dom, 5, self.datapoints['xpath_for_mining']['operating_revenues']),
+                                   self.search_downloaded_html(dom, 5, self.datapoints['xpath_for_mining']['operating_expenses']),
+                                   self.search_downloaded_html(dom, 2, self.datapoints['xpath_for_mining']['depreciation']),
+                                   self.search_downloaded_html(dom, 2, self.datapoints['xpath_for_mining']['amortization'])])
 
             return True
-            # SW.get_url(driver, new_file_path)
-            # time.sleep(100)
 
-    @staticmethod
-    def search_downloaded_html(driver, delimiter, xpath):
+    def search_downloaded_html(self, dom, delimiter, xpath):
         """ Search element from the downloaded file """
-        elements = driver.find_elements(By.XPATH, xpath)
+        elements = dom.xpath(xpath)
         for count, element in enumerate(elements):
             if count == delimiter:
-                return element.get_attribute('innerText').strip()
+                s = str(etree.tostring(element)).replace('b\'', '')[:-1]
+                strip_html = re.compile(r'<.*?>|=')
+                return strip_html.sub('', s)
         return ''
 
-    @staticmethod
-    def delete_all_tab(driver):
-        """ Delete all tab except for the current opened tab """
-        curr = driver.current_window_handle
-        for handle in driver.window_handles:
-            driver.switch_to.window(handle)
-            if handle != curr:
-                driver.close()
-
-    @staticmethod
-    def wait_file_complete(wait_time, driver):
-        """Check if file is 100% downloaded on chrome://downloads tab"""
-        driver.execute_script("window.open()")
-        # switch to new tab
-        driver.switch_to.window(driver.window_handles[-1])
-        # navigate to chrome downloads
-        driver.get('chrome://downloads')
-        # define the endTime
-        end_time = time.time() + wait_time
-        while True:
-            try:
-                # get downloaded percentage
-                download_percentage = driver.execute_script(
-                    "return document.querySelector('downloads-manager').shadowRoot.querySelector('#downloadsList downloads-item').shadowRoot.querySelector('#progress').value")
-                # check if downloadPercentage is 100 (otherwise the script will keep waiting)
-                if download_percentage == 100:
-                    # return the file name once the download is completed
-                    return driver.execute_script(
-                        "return document.querySelector('downloads-manager').shadowRoot.querySelector('#downloadsList downloads-item').shadowRoot.querySelector('div#content  #file-link').text")
-            except:
-                pass
-            time.sleep(1)
-            if time.time() > end_time:
-                break
-
-    def normalize(self,raw):
-        """Save raw data to file"""
-        return pd.DataFrame(raw, columns=self.data_table.header()[:-1])
 
 def main(argv):
     """Main entry"""
-    web = BWTracker(argv)
+    web = Ferc(argv)
     web.run()
 
 

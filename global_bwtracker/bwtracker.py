@@ -26,9 +26,9 @@ class BWTracker(Runner):
                 'detections': "//div/h2[contains(text(),'Detections')]",
                 'last_updated': "//p[contains(text(), 'Last updated')]"
             },
-            "simple_web_table": ['FetchDate', 'Category', 'Technology', 'Weight in Simple Websites'],
-            "top_in_web_table": ['FetchDate', 'Category', 'Technology', 'Websites', 'Weight in All Websites'],
-            "detections_table": ['FetchDate', 'Last Updated', 'Category', 'Detections', 'Total'],
+            "simple_web_table": ['FetchDate', 'LastUpdated', 'Category', 'Technology', 'Weight in Simple Websites'],
+            "top_in_web_table": ['FetchDate', 'LastUpdated', 'Category', 'Technology', 'Websites', 'Weight in All Websites'],
+            "detections_table": ['FetchDate', 'LastUpdated', 'Category', 'Detections', 'Total'],
         }
         self.simple_web = Row(self.datapoints["simple_web_table"])
         self.top_in_web = Row(self.datapoints["top_in_web_table"])
@@ -67,11 +67,11 @@ class BWTracker(Runner):
         simple_web_df = pd.DataFrame(self.data_simple_web, columns=self.simple_web.header()[:-1])
         top_in_web_df = pd.DataFrame(self.data_top_in_web, columns=self.top_in_web.header()[:-1])
         top_in_web_df.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"], value=["", ""], regex=True, inplace=True)
-        # detections_df = pd.DataFrame(self.data_detections, columns=self.detections.header()[:-1])
+        detections_df = pd.DataFrame(self.data_detections, columns=self.detections.header()[:-1])
         temp_prefix = self.prefix
         self.save_final_output(simple_web_df, temp_prefix.replace('bwtracker', 'bwtracker_simple_web'))
         self.save_final_output(top_in_web_df, temp_prefix.replace('bwtracker', 'bwtracker_top_in_web'))
-        # self.save_final_output(detections_df, temp_prefix.replace('bwtracker', 'bwtracker_detections'))
+        self.save_final_output(detections_df, temp_prefix.replace('bwtracker', 'bwtracker_detections'))
 
     def save_final_output(self, df, filename):
         """Save final output"""
@@ -87,7 +87,7 @@ class BWTracker(Runner):
             data = element.text
             website_name = ' '.join((data.split(' ')[:-1]))
             percentage = data.split(' ')[-1].replace('%', '')
-            self.data_simple_web.append([self.simple_web.fetchdate, pages['title'], website_name, percentage])
+            self.data_simple_web.append([self.simple_web.fetchdate, self.get_latest_date_updated(driver), pages['title'], website_name, percentage])
 
     def get_data_top_in_web(self, driver, pages):
         """Get data from table in the website"""
@@ -98,20 +98,21 @@ class BWTracker(Runner):
             table_data = table_row.find_all('td')
             row = [table_row.text for table_row in table_data]
             if len(row) == 3:
-                self.data_top_in_web.append([self.top_in_web.fetchdate, pages['title'], *row])
+                self.data_top_in_web.append([self.top_in_web.fetchdate, self.get_latest_date_updated(driver), pages['title'], *row])
 
     def get_data_detections(self, driver, pages):
         """Get number of detected websites"""
         detection_element = driver.find_element(By.XPATH, self.datapoints['xpath']['detections'])
         detection_value = re.sub("[^0-9]", "", detection_element.text)
+        self.data_detections.append([self.detections.fetchdate, self.get_latest_date_updated(driver), pages['title'], detection_value, pages['total']])
+
+    def get_latest_date_updated(self, driver):
         last_update_string = driver.find_element(By.XPATH, self.datapoints['xpath']['last_updated']).get_attribute("innerText")
         last_update_string = str(last_update_string).lower().split('updated')[1].strip()
         day = last_update_string.split(' ')[0][:2]
         month = last_update_string.split(' ')[1][:3]
         year = last_update_string.split(' ')[2][:4]
-        last_update = datetime.strptime(f'{day}-{month}-{year}', '%d-%b-%Y').strftime('%m/%d/%Y')
-        self.data_detections.append([self.detections.fetchdate, last_update, pages['title'], detection_value, pages['total']])
-        
+        return datetime.strptime(f'{day}-{month}-{year}', '%d-%b-%Y').strftime('%m/%d/%Y')
 
 def main(argv):
     """Main entry"""
