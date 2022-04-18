@@ -21,7 +21,7 @@ sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
 from pyersq.row import Row
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
-from pyersq.zenscraper import ZenScraper
+
 
 class Ferc(Runner):
     """Collect data from website"""
@@ -30,22 +30,26 @@ class Ferc(Runner):
         self.datapoints = {
             "base_url": 'https://elibrary.ferc.gov/eLibrary/searc',
             "out": ['FetchDate', 'Company', 'Status',  'Category', 'Accession', 'Filed',
-                           'Document', 'Description', 'Class/Type', 'Security Level', 'Operating Revenue', 'Operating Expenses',
-                           'Depreciation', 'Amortization'],
+                    'Document', 'Description', 'Class/Type', 'Security Level', 'Operating Revenue',
+                    'Operating Expenses', 'Depreciation', 'Amortization'],
             ":summ": ['Status', 'Value'],
             "xpath_for_mining": {
-                'operating_revenues': "//div[contains(text(), 'Operating Revenues')]/parent::node()/parent::node()/parent::tr/td",
-                'operating_expenses': "//div[contains(text(), 'Operating Expenses')]/parent::node()/parent::node()/parent::tr/td",
-                'depreciation': "//div[text()='Depreciation']/parent::node()/parent::node()/parent::tr/td",
-                'amortization': "//div[text()='Amortization']/parent::node()/parent::node()/parent::tr/td"
+                'operating_revenues': "//div[contains(text(), 'Operating Revenues')]"
+                                      "/parent::node()/parent::node()/parent::tr/td",
+                'operating_expenses': "//div[contains(text(), 'Operating Expenses')]"
+                                      "/parent::node()/parent::node()/parent::tr/td",
+                'depreciation': "//div[text()='Depreciation']"
+                                "/parent::node()/parent::node()/parent::tr/td",
+                'amortization': "//div[text()='Amortization']"
+                                "/parent::node()/parent::node()/parent::tr/td"
             }
         }
 
-        to_find_data = pd.read_excel(os.path.abspath(f'{self.outdir}/input/FERC_input.xlsx'), sheet_name=1)
+        input_path = f'{self.outdir}/input/FERC_input.xlsx'
+        to_find_data = pd.read_excel(os.path.abspath(input_path), sheet_name=1)
         self.to_find = to_find_data['Company Name'].drop_duplicates().to_list()
 
         self.out = Row(self.datapoints["out"])
-        self.complete, self.incomplete, self.nohtml = 0, 0, 0
         self.out_data = []
         self.status = 'complete'
 
@@ -58,7 +62,8 @@ class Ferc(Runner):
         retry = 0
         for to_find in self.to_find:
             file_name = self.string_filter(to_find, remove_spaces=False).replace(" ", "_")
-            download_dir = os.path.abspath(f'{self.outdir}/input/{datetime.now().strftime("%Y_%m_%d")}/ferc/{file_name}')
+            download_dir = os.path.abspath(f'{self.outdir}/input/'
+                                           f'{datetime.now().strftime("%Y_%m_%d")}/ferc/{file_name}')
             Path(download_dir).mkdir(parents=True, exist_ok=True)
             download_dir = ''
             while True:
@@ -73,7 +78,8 @@ class Ferc(Runner):
     def normalize(self,raw):
         """Save raw data to file"""
         df = pd.DataFrame(raw, columns=self.out.header()[:-1])
-        df.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"], value=["", ""], regex=True, inplace=True)
+        df.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"],
+                   value=["", ""], regex=True, inplace=True)
         return df
 
     def download_source_file(self,download_dir, to_find):
@@ -99,16 +105,16 @@ class Ferc(Runner):
                     self.status = 'nohtml - pdf is the only output'
                     self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data, '', '', '', ''])
                     return True
-
                 try:
                     list_of_files = glob.glob(f'{download_dir}/*.html')  # * means all if need specific format then *.csv
                     latest_file = max(list_of_files, key=os.path.getctime)
                 except ValueError:
                     return False
 
-                file = open(latest_file, 'r').read()
-                soup = BeautifulSoup(file, "lxml")
+                with open(latest_file, 'r', encoding="utf8") as file:
+                    soup = BeautifulSoup(file, "lxml")
                 dom = etree.HTML(str(soup))
+
                 self.status = 'complete'
                 self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data,
                                        self.search_downloaded_html(dom, 5, self.datapoints['xpath_for_mining']['operating_revenues']),
@@ -120,6 +126,7 @@ class Ferc(Runner):
                 return True
 
     def navigate_form(self, driver, to_find):
+        """navigation on the html form"""
         url = self.datapoints['base_url']
         sleep_seconds = random.randint(1, 3)
         SW.get_url(driver, url, sleep_seconds=sleep_seconds)
@@ -137,6 +144,7 @@ class Ferc(Runner):
         driver.find_element(By.ID, "submit").click()
 
     def mining_details(self, driver, to_find):
+        """mining table result from navigation"""
         WebDriverWait(driver, 120).until(EC.presence_of_element_located((By.XPATH, "//div[@id='main-content']")))
         rows = driver.find_element(By.ID, "tblRslt").find_element(By.XPATH, ".//tbody").find_elements(By.XPATH, ".//tr")
         is_name_matched = False
@@ -148,8 +156,7 @@ class Ferc(Runner):
                     is_name_matched = True
                     row_element = row
                     break
-                else:
-                    continue
+
 
         if is_name_matched:
             for count, row in enumerate(row_element.find_elements(By.XPATH, ".//td")):
@@ -166,34 +173,23 @@ class Ferc(Runner):
         return row_element, row_data
 
 
-
-        # table_row = driver.find_elements(By.XPATH,"//span[contains(text(), 'html')]/parent::a/parent::node()/parent::node()/parent::tr/td")
-        # row_data = []
-        # for count, row in enumerate(table_row):
-        #     if count in (4, 8):
-        #         continue
-        #     row_data.append(row.get_attribute("innerText"))
-        #     if len(row_data) == 7:
-        #         break
-
-        driver.find_element(By.XPATH, "//span[contains(text(), 'html')]/parent::a").click()
-
     @staticmethod
     def string_filter(text, remove_spaces=True):
+        """Remove symbols and spaces"""
         text = re.sub(r'[^\w]', ' ', text)
         if remove_spaces:
             text = text.replace(' ','')
         return text.lower()
 
-
-    def search_downloaded_html(self, dom, delimiter, xpath):
+    @staticmethod
+    def search_downloaded_html(dom, delimiter, xpath):
         """ Search element from the downloaded file """
         elements = dom.xpath(xpath)
         for count, element in enumerate(elements):
             if count == delimiter:
-                s = str(etree.tostring(element)).replace('b\'', '')[:-1]
+                text = str(etree.tostring(element)).replace('b\'', '')[:-1]
                 strip_html = re.compile(r'<.*?>|=')
-                return strip_html.sub('', s)
+                return strip_html.sub('', text)
         return ''
 
 
