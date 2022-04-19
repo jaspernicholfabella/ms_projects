@@ -100,7 +100,7 @@ class Ferc(Runner):
         :param to_find: string that specify which company to find
         :return: bool, if not success repeat the download process
         """
-        with SW.get_driver(download_dir=download_dir, headless=True) as driver:
+        with SW.get_driver(download_dir=download_dir) as driver:
             self.navigate_form(driver, to_find)
             row_element, row_data = self.mining_details(driver, to_find)
             if row_element is None:
@@ -140,7 +140,7 @@ class Ferc(Runner):
     def navigate_form(self, driver, to_find):
         """navigation on the html form"""
         url = self.datapoints['base_url']
-        sleep_seconds = random.randint(1, 3)
+        sleep_seconds = random.randint(1, 5)
         SW.get_url(driver, url, sleep_seconds=sleep_seconds)
         driver.find_element(By.XPATH, "//input[@name='textsearch']").send_keys(to_find)
         element_date_start = driver.find_element(By.XPATH, "//input[@name='dFROM']")
