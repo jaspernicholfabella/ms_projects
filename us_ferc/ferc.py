@@ -32,7 +32,7 @@ class Ferc(Runner):
             "out": ['FetchDate', 'Company', 'Status',  'Category', 'Accession', 'Filed',
                     'Document', 'Description', 'Class/Type', 'Security Level', 'Operating Revenue',
                     'Operating Expenses', 'Depreciation', 'Amortization'],
-            ":summ": ['Status', 'Value'],
+            "summ": ['FetchDate', 'Status', 'Value'],
             "xpath_for_mining": {
                 'operating_revenues': "//div[contains(text(), 'Operating Revenues')]"
                                       "/parent::node()/parent::node()/parent::tr/td",
@@ -50,27 +50,37 @@ class Ferc(Runner):
         self.to_find = to_find_data['Company Name'].drop_duplicates().to_list()
 
         self.out = Row(self.datapoints["out"])
+        self.summ = Row(self.datapoints["summ"])
         self.out_data = []
-        self.status = 'complete'
-
+        self.summ_data = []
+        self.status_count = {
+            'complete': 0,
+            'nodata': 0,
+            'nohtml': 0,
+            'failed': 0
+        }
 
     def get_raw(self):
         """ Get raw data from source"""
+
         fetchdate = datetime.now().strftime('%m/%d/%Y')
-        self.out.fetchdate = fetchdate
+        self.out.fetchdate= self.summ.fetchdate= fetchdate
+
 
         retry = 0
         for to_find in self.to_find:
             file_name = self.string_filter(to_find, remove_spaces=False).replace(" ", "_")
-            download_dir = os.path.abspath(f'{self.outdir}/input/'
-                                           f'{datetime.now().strftime("%Y_%m_%d")}/ferc/{file_name}')
+            download_dir = os.path.abspath(f'{self.outdir}/input/'f'{datetime.now().strftime("%Y_%m_%d")}/ferc/{file_name}')
             Path(download_dir).mkdir(parents=True, exist_ok=True)
-            download_dir = ''
+
             while True:
                 is_file_downloaded = self.download_source_file(download_dir, to_find)
                 if is_file_downloaded:
                     break
                 if retry >= 3:
+                    self.status = 'failed - download failed.'
+                    self.status_count['failed'] += 1
+                    self.out_data.append([self.out.fetchdate, to_find, self.status, *['' for _ in range(0, 11)]])
                     break
                 retry += 1
         return self.out_data
@@ -90,21 +100,16 @@ class Ferc(Runner):
         :param to_find: string that specify which company to find
         :return: bool, if not success repeat the download process
         """
-        with SW.get_driver(download_dir=download_dir, desired_capabilities=SW.enable_log()) as driver:
+        with SW.get_driver(download_dir=download_dir, headless=True) as driver:
             self.navigate_form(driver, to_find)
             row_element, row_data = self.mining_details(driver, to_find)
-            if row_data == ['', '', '', '', '', '', '']:
-                self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data, '', '', '', ''])
+            if row_element is None:
+                self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data])
                 return True
-            else:
-                try:
-                    WebDriverWait(driver, 120).until(EC.presence_of_element_located((By.XPATH, "//span[contains(text(), 'html')]/parent::a")))
-                    row_element.find_element(By.XPATH, ".//span[contains(text(), 'html')]/parent::a").click()
-                    time.sleep(30)
-                except NoSuchElementException:
-                    self.status = 'nohtml - pdf is the only output'
-                    self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data, '', '', '', ''])
-                    return True
+            try:
+                row_element.find_element(By.XPATH, ".//span[contains(text(), 'html')]/parent::a").click()
+                time.sleep(60)
+
                 try:
                     list_of_files = glob.glob(f'{download_dir}/*.html')  # * means all if need specific format then *.csv
                     latest_file = max(list_of_files, key=os.path.getctime)
@@ -116,13 +121,20 @@ class Ferc(Runner):
                 dom = etree.HTML(str(soup))
 
                 self.status = 'complete'
+                self.status_count['complete'] += 1
                 self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data,
-                                       self.search_downloaded_html(dom, 5, self.datapoints['xpath_for_mining']['operating_revenues']),
-                                       self.search_downloaded_html(dom, 5, self.datapoints['xpath_for_mining']['operating_expenses']),
-                                       self.search_downloaded_html(dom, 2, self.datapoints['xpath_for_mining']['depreciation']),
-                                       self.search_downloaded_html(dom, 2, self.datapoints['xpath_for_mining']['amortization'])])
+                                      self.search_downloaded_html(dom, 5, self.datapoints['xpath_for_mining']['operating_revenues']),
+                                      self.search_downloaded_html(dom, 5, self.datapoints['xpath_for_mining']['operating_expenses']),
+                                      self.search_downloaded_html(dom, 2, self.datapoints['xpath_for_mining']['depreciation']),
+                                      self.search_downloaded_html(dom, 2, self.datapoints['xpath_for_mining']['amortization'])])
+                return True
 
-                self.complete = self.complete + 1
+
+            except Exception as e:
+                print(f'Exception:  {e}')
+                self.status = 'nohtml'
+                self.status_count['nohtml'] += 1
+                self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data])
                 return True
 
     def navigate_form(self, driver, to_find):
@@ -157,7 +169,6 @@ class Ferc(Runner):
                     row_element = row
                     break
 
-
         if is_name_matched:
             for count, row in enumerate(row_element.find_elements(By.XPATH, ".//td")):
                 if count in (4, 8):
@@ -166,11 +177,22 @@ class Ferc(Runner):
                 if len(row_data) == 7:
                     break
         else:
-            self.status = 'nohtml - name does not match description'
-            print(self.status)
-            row_data = ['', '', '', '', '', '', '']
+            self.status = 'nodata - name not on description'
+            self.status_count['nodata'] += 1
+            row_data = ['' for _ in range(0, 11)]
+
 
         return row_element, row_data
+
+    def cleanup(self):
+        """ Finalize the Data and create a counter """
+        self.summ_data.append([self.summ.fetchdate, 'complete', self.status_count['complete']])
+        self.summ_data.append([self.summ.fetchdate, 'nodata', self.status_count['nodata']])
+        self.summ_data.append([self.summ.fetchdate, 'nohtml', self.status_count['nohtml']])
+        self.summ_data.append([self.summ.fetchdate, 'failed', self.status_count['failed']])
+
+        summarry_dataframe = pd.DataFrame(self.summ_data, columns=self.summ.header()[:-1])
+        summarry_dataframe.to_csv(f'{self.outdir}/raw/ferc_summary_{datetime.now().strftime("%Y%m%d")}.csv')
 
 
     @staticmethod
