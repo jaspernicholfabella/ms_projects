@@ -35,7 +35,7 @@ class BWTracker(Runner):
         self.detections = Row(self.datapoints["detections_table"])
         self.data_simple_web, self.data_top_in_web, self.data_detections = [], [], []
 
-    def get_raw(self):
+    def get_raw(self, **kwargs):
         """ Get raw data from source"""
         fetchdate = datetime.now().strftime('%m/%d/%Y')
         self.simple_web.fetchdate = self.top_in_web.fetchdate = self.detections.fetchdate = fetchdate
@@ -62,7 +62,7 @@ class BWTracker(Runner):
         with open(f'{html_dir}/{title}.html', 'w') as f:
             f.write(driver.page_source)
 
-    def save_output(self,data,**kwargs):
+    def save_output(self,data, **kwargs):
         """Override Save output Function"""
         simple_web_df = pd.DataFrame(self.data_simple_web, columns=self.simple_web.header()[:-1])
         top_in_web_df = pd.DataFrame(self.data_top_in_web, columns=self.top_in_web.header()[:-1])

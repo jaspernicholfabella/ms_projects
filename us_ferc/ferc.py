@@ -31,7 +31,7 @@ class Ferc(Runner):
             "base_url": 'https://elibrary.ferc.gov/eLibrary/searc',
             "out": ['FetchDate', 'Company', 'Status',  'Category', 'Accession', 'Filed',
                     'Document', 'Description', 'Class/Type', 'Security Level', 'Operating Revenue',
-                    'Operating Expenses', 'Depreciation', 'Amortization'],
+                    'Operating Expenses', 'Depreciation', 'Amortization', 'Download File Location'],
             "summ": ['FetchDate', 'Status', 'Value'],
             "xpath_for_mining": {
                 'operating_revenues': "//div[contains(text(), 'Operating Revenues')]"
@@ -45,7 +45,7 @@ class Ferc(Runner):
             }
         }
 
-        input_path = f'{self.outdir}/input/FERC_input.xlsx'
+        input_path = f'{self.outdir}/input/FERC_input_2.xlsx'
         to_find_data = pd.read_excel(os.path.abspath(input_path), sheet_name=1)
         self.to_find = to_find_data['Company Name'].drop_duplicates().to_list()
 
@@ -53,6 +53,8 @@ class Ferc(Runner):
         self.summ = Row(self.datapoints["summ"])
         self.out_data = []
         self.summ_data = []
+        self.row_data = []
+
         self.status_count = {
             'complete': 0,
             'nodata': 0,
@@ -66,7 +68,6 @@ class Ferc(Runner):
         fetchdate = datetime.now().strftime('%m/%d/%Y')
         self.out.fetchdate= self.summ.fetchdate= fetchdate
 
-
         retry = 0
         for to_find in self.to_find:
             file_name = self.string_filter(to_find, remove_spaces=False).replace(" ", "_")
@@ -78,9 +79,9 @@ class Ferc(Runner):
                 if is_file_downloaded:
                     break
                 if retry >= 3:
-                    self.status = 'failed - download failed.'
+                    self.status = 'failed - download failed. (Time Out on 3 Retries)'
                     self.status_count['failed'] += 1
-                    self.out_data.append([self.out.fetchdate, to_find, self.status, *['' for _ in range(0, 11)]])
+                    self.out_data.append([self.out.fetchdate, to_find, self.status, *self.row_data])
                     break
                 retry += 1
         return self.out_data
@@ -100,13 +101,14 @@ class Ferc(Runner):
         :param to_find: string that specify which company to find
         :return: bool, if not success repeat the download process
         """
-        with SW.get_driver(download_dir=download_dir) as driver:
+        print(f'process for {to_find}')
+        with SW.get_driver(download_dir=download_dir, headless=True) as driver:
             self.navigate_form(driver, to_find)
-            row_element, row_data = self.mining_details(driver, to_find)
+            row_element = self.mining_details(driver, to_find)
             if row_element is None:
-                self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data])
+                self.out_data.append([self.out.fetchdate, to_find, self.status, *self.row_data])
                 return True
-            try:
+            else:
                 row_element.find_element(By.XPATH, ".//span[contains(text(), 'html')]/parent::a").click()
                 time.sleep(60)
 
@@ -122,19 +124,12 @@ class Ferc(Runner):
 
                 self.status = 'complete'
                 self.status_count['complete'] += 1
-                self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data,
+                self.out_data.append([self.out.fetchdate, to_find, self.status, *self.row_data,
                                       self.search_downloaded_html(dom, 5, self.datapoints['xpath_for_mining']['operating_revenues']),
                                       self.search_downloaded_html(dom, 5, self.datapoints['xpath_for_mining']['operating_expenses']),
                                       self.search_downloaded_html(dom, 2, self.datapoints['xpath_for_mining']['depreciation']),
-                                      self.search_downloaded_html(dom, 2, self.datapoints['xpath_for_mining']['amortization'])])
-                return True
-
-
-            except Exception as e:
-                print(f'Exception:  {e}')
-                self.status = 'nohtml'
-                self.status_count['nohtml'] += 1
-                self.out_data.append([self.out.fetchdate, to_find, self.status, *row_data])
+                                      self.search_downloaded_html(dom, 2, self.datapoints['xpath_for_mining']['amortization']),
+                                      str(download_dir)])
                 return True
 
     def navigate_form(self, driver, to_find):
@@ -160,29 +155,47 @@ class Ferc(Runner):
         WebDriverWait(driver, 120).until(EC.presence_of_element_located((By.XPATH, "//div[@id='main-content']")))
         rows = driver.find_element(By.ID, "tblRslt").find_element(By.XPATH, ".//tbody").find_elements(By.XPATH, ".//tr")
         is_name_matched = False
-        row_data = []
-        row_element = None
+        self.row_data = []
+        row_elements = []
         for row in rows:
             for data in row.find_elements(By.XPATH, ".//td"):
                 if self.string_filter(to_find) in self.string_filter(data.get_attribute("innerText")):
                     is_name_matched = True
-                    row_element = row
-                    break
+                    row_elements.append(row)
 
+        data_element = None
         if is_name_matched:
-            for count, row in enumerate(row_element.find_elements(By.XPATH, ".//td")):
-                if count in (4, 8):
-                    continue
-                row_data.append(row.get_attribute("innerText"))
-                if len(row_data) == 7:
-                    break
+            for row_element in row_elements:
+                try:
+                    row_element.find_element(By.XPATH, ".//span[contains(text(), 'html')]/parent::a")
+                    data_element = row_element
+                except NoSuchElementException:
+                    pass
+
+            if data_element is not None:
+                for count, row in enumerate(data_element.find_elements(By.XPATH, ".//td")):
+                    if count in (4, 8):
+                        continue
+                    self.row_data.append(row.get_attribute("innerText"))
+                    if len(self.row_data) == 7:
+                        break
+            else:
+                self.status = 'nohtml'
+                self.status_count['nohtml'] += 1
+                for count, row in enumerate(row_elements[0].find_elements(By.XPATH, ".//td")):
+                    if count in (4, 8):
+                        continue
+                    self.row_data.append(row.get_attribute("innerText"))
+                    if len(self.row_data) == 7:
+                        break
+                self.row_data.append('')
+
         else:
             self.status = 'nodata - name not on description'
             self.status_count['nodata'] += 1
-            row_data = ['' for _ in range(0, 11)]
+            self.row_data = ['' for _ in range(0, 12)]
 
-
-        return row_element, row_data
+        return data_element
 
     def cleanup(self):
         """ Finalize the Data and create a counter """

@@ -1,3 +1,11 @@
 import pylint.lint
-pylint_opts = ['import-error,wrong-import-position', 'us_ferc/ferc.py']
+disable_opts = [
+    '--disable=import-error',
+    '--disable=wrong-import-position',
+    '--disable=attribute-defined-outside-init',
+    '--disable=c-extension-no-member',
+    '--disable=unused-argument',
+    '--disable=invalid-name'
+]
+pylint_opts = [*disable_opts, 'us_ferc/ferc2.py']
 pylint.lint.Run(pylint_opts)

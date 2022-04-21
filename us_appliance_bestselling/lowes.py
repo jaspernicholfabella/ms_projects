@@ -41,21 +41,17 @@ class Lowes(Runner):
             for category, to_find in self.datapoints['to_find'].items():
                 SW.get_url(driver, to_find, sleep_seconds=1)
                 for cookies in driver.get_cookies():
-                    print(cookies)
+                    # print(cookies)
                     driver.add_cookie(cookies)
-
 
                 print(to_find)
                 self.get_table_data(driver, to_find)
                 offset = 24
                 while True:
                     link = f"{to_find.split('?')[0]}?offset={offset}&{to_find.split('?')[1]}"
-                    self.get_table_data(driver, link)
-                    # if self.check_url_exists(link, cookies):
-                    #     self.get_table_data(driver, link)
-                    #     offset += 24
-                    # else:
-                    #     break
+                    print(self.check_url_exists(link))
+                    # self.get_table_data(driver, link)
+
 
         return self.out
 
@@ -69,14 +65,13 @@ class Lowes(Runner):
         return pd.DataFrame(raw, columns=self.out.header()[:-1])
 
     @staticmethod
-    def check_url_exists(url, cookies):
+    def check_url_exists(url):
         """
         Checks if a url exists
         :param url: url to check
         :return: True if the url exists, false otherwise.
         """
-        print(requests.head(url, allow_redirects=True, cookies=cookies).status_code)
-        return requests.head(url, allow_redirects=True, cookies=cookies).status_code == 200
+        return requests.head(url, allow_redirects=True)
 
 
 def main(argv):
