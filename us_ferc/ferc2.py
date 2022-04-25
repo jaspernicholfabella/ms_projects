@@ -42,10 +42,12 @@ class Ferc(Runner):
                 "Description",
                 "Class/Type",
                 "Security Level",
+                "Period",
                 "Operating Revenue",
                 "Operating Expenses",
                 "Depreciation",
                 "Amortization",
+                "Grand Total",
                 "Download File Location",
             ],
             "summ": ["FetchDate", "Status", "Value"],
@@ -58,6 +60,8 @@ class Ferc(Runner):
                 "/parent::node()/parent::node()/parent::tr/td",
                 "amortization": "//div[text()='Amortization']"
                 "/parent::node()/parent::node()/parent::tr/td",
+                "period": "//div[contains(text(), 'Year/Period of Report')]/parent::node()/parent::node()/td",
+                "grand_total": "//td[contains(text(), 'GRAND TOTAL')]/parent::node()/td"
             },
         }
 
@@ -82,20 +86,24 @@ class Ferc(Runner):
 
     def get_raw(self):
         """ Get raw data from source"""
-        input_path = f"{self.outdir}/input/FERC_input_2.xlsx"
-        to_find_data = pd.read_excel(os.path.abspath(input_path), sheet_name=1)
-        company_to_find = to_find_data["Company Name"].drop_duplicates().to_list()
+        input_path = f"{self.outdir}/input/FERC_input_new.xlsx"
+        to_find_data = pd.read_excel(os.path.abspath(input_path), sheet_name=2)
+        company_to_find = to_find_data["Company Name (Cleaned)"].drop_duplicates().to_list()
 
         fetchdate = datetime.now().strftime("%m/%d/%Y")
         self.out.fetchdate = self.summ.fetchdate = fetchdate
 
         for to_find in company_to_find:
-            self.start_scraping_process(
-                "form6", to_find, self.form_6_status_count, self.form_6_out_data
-            )
-            self.start_scraping_process(
-                "form6Q", to_find, self.form_6Q_status_count, self.form_6Q_out_data
-            )
+            try:
+                self.start_scraping_process(
+                    "form6", to_find, self.form_6_status_count, self.form_6_out_data
+                )
+                self.start_scraping_process(
+                    "form6Q", to_find, self.form_6Q_status_count, self.form_6Q_out_data
+                )
+            except Exception as e:
+                print(f'Exception Encountered: {e}')
+                pass
 
     def start_scraping_process(self, form, to_find, status_count, out_data):
         """Function to Start the Scraping Process with 3 retries"""
@@ -123,7 +131,7 @@ class Ferc(Runner):
             f"{to_find}_{self.form}", remove_spaces=False
         ).replace(" ", "_")
         download_dir = os.path.abspath(
-            f"{self.outdir}/input/"
+            f"{self.outdir}/raw/downloaded_html/"
             f'{datetime.now().strftime("%Y_%m_%d")}/ferc/{file_name}'
         )
         Path(download_dir).mkdir(parents=True, exist_ok=True)
@@ -147,10 +155,13 @@ class Ferc(Runner):
                 )
                 return True
 
-            row_element.find_element(
+            download_link = row_element.find_element(
                 By.XPATH, ".//span[contains(text(), 'html')]/parent::a"
-            ).click()
-            time.sleep(60)
+            ).get_attribute('href')
+            print(f'download link at: {download_link}')
+            SW.get_url(driver, download_link, sleep_seconds=random.randint(1, 5))
+
+            time.sleep(30)#dapat 60
 
             try:
                 list_of_files = glob.glob(
@@ -166,15 +177,22 @@ class Ferc(Runner):
             self.status = "complete"
             status_count["complete"] += 1
             if self.form == "form6":
-                income_statement_delimeter = 5
-            elif self.form == "form6Q":
                 income_statement_delimeter = 3
+            elif self.form == "form6Q":
+                income_statement_delimeter = 5
+
+            # formatted_download_dir = "\\" + str(download_dir).replace('/', '\\')
             out_data.append(
                 [
                     self.out.fetchdate,
                     to_find,
                     self.status,
                     *self.row_data,
+                    self.search_downloaded_html(
+                        dom,
+                        1,
+                        self.datapoints["xpath_for_mining"]["period"],
+                    ),
                     self.search_downloaded_html(
                         dom,
                         income_statement_delimeter,
@@ -191,10 +209,14 @@ class Ferc(Runner):
                     self.search_downloaded_html(
                         dom, 2, self.datapoints["xpath_for_mining"]["amortization"]
                     ),
+                    self.search_downloaded_html(
+                        dom, 10, self.datapoints["xpath_for_mining"]["grand_total"]
+                    ),
                     str(download_dir),
                 ]
             )
             return True
+
 
     def navigate_form(self, driver, to_find):
         """navigation on the html form"""
@@ -335,9 +357,8 @@ class Ferc(Runner):
             if count == delimiter:
                 text = str(etree.tostring(element)).replace("b'", "")[:-1]
                 strip_html = re.compile(r"<.*?>|=")
-                return strip_html.sub("", text)
+                return " ".join(str(strip_html.sub("", text)).split())
         return ""
-
 
 def main(argv):
     """Main entry"""
