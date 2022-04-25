@@ -161,7 +161,7 @@ class Ferc(Runner):
             print(f'download link at: {download_link}')
             SW.get_url(driver, download_link, sleep_seconds=random.randint(1, 5))
 
-            time.sleep(30)#dapat 60
+            time.sleep(60)
 
             try:
                 list_of_files = glob.glob(
