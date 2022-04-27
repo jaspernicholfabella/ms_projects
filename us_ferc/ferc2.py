@@ -328,11 +328,12 @@ class Ferc(Runner):
         final_arr = []
         for row_element in row_elements:
             data_elements = row_element.find_elements(By.XPATH, ".//td")
-            date = str(data_elements[2].get_attribute('innerText')).strip()
+            date = str(data_elements[1].get_attribute('innerText')).strip()
             date_arr.append(date)
             row_element_dict.update({date:row_element})
 
-        date_arr.sort(key=lambda date: datetime.strptime(date, "%m/%d/%Y"), reverse=True)
+        # date_arr.sort(key=lambda date: datetime.strptime(date, "%m/%d/%Y"), reverse=True)
+        date_arr = sorted(date_arr, reverse=True)
 
         for date in date_arr:
             final_arr.append(row_element_dict[date])
@@ -356,7 +357,7 @@ class Ferc(Runner):
         form_6_summ_df = self.get_summarry_df(self.form6.status_count)
         form_6Q_summ_df = self.get_summarry_df(self.form6Q.status_count)
 
-        temp_prefix = self.block.prefix
+        temp_prefix = str(self.prefix)
         self.save_final_output(form_6_df, temp_prefix.replace("ferc", "ferc_form_6"))
         self.save_final_output(form_6Q_df, temp_prefix.replace("ferc", "ferc_form_6Q"))
         self.save_final_output(
@@ -369,7 +370,7 @@ class Ferc(Runner):
     def save_final_output(self, dataframe, filename):
         """Save final output"""
         Path(f"{self.outdir}/{self.output_subdir}").mkdir(parents=True, exist_ok=True)
-        self.block.prefix = filename
+        self.prefix = filename
         super().save_output(dataframe, encoding="utf-8")
 
     def get_out_df(self, out_data):
