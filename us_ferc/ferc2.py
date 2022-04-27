@@ -19,12 +19,40 @@ from lxml import etree
 
 sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
-from pyersq.row import Row
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
+
+class FormType:
+    """ Unique type class to decipher between attributes """
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+
+    def __repr__(self):
+        return str(self.value)
+
+    def __index__(self):
+        return int(self.key)
+
+
+class Form:
+    """Basic ORM Class"""
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, FormType(key, value))
+
+    @staticmethod
+    def print_value():
+        ''' Adding this for Pylint issues '''
+        print('print_value')
+
+    @staticmethod
+    def length():
+        ''' Adding this for Pylint issues '''
+        print('length')
+
 
 class Ferc(Runner):
     """Collect data from website"""
-
     def __init__(self, argv):
         super().__init__(
             argv, output_prefix="ferc", output_subdir="raw", output_type="csv"
@@ -60,29 +88,29 @@ class Ferc(Runner):
                 "/parent::node()/parent::node()/parent::tr/td",
                 "amortization": "//div[text()='Amortization']"
                 "/parent::node()/parent::node()/parent::tr/td",
-                "period": "//div[contains(text(), 'Year/Period of Report')]/parent::node()/parent::node()/td",
+                "period": "//div[contains(text(), 'Year/Period of Report')]"
+                          "/parent::node()/parent::node()/td",
                 "grand_total": "//td[contains(text(), 'GRAND TOTAL')]/parent::node()/td"
             },
         }
-
-        self.out = Row(self.datapoints["out"])
-        self.summ = Row(self.datapoints["summ"])
-        self.form_6_out_data = self.form_6_summ_data = []
-        self.form_6Q_out_data = self.form_6Q_summ_data = []
+        self.form6 = Form()
+        self.form6Q = Form()
+        self.form6.out_data = []
+        self.form6Q.out_data = []
+        self.form6.status_count = {
+            "complete": 0,
+            "nodata": 0,
+            "nohtml": 0,
+            "failed": 0,
+        }
+        self.form6Q.status_count = {
+            "complete": 0,
+            "nodata": 0,
+            "nohtml": 0,
+            "failed": 0,
+        }
         self.row_data = []
         self.form = ""
-        self.form_6_status_count = {
-            "complete": 0,
-            "nodata": 0,
-            "nohtml": 0,
-            "failed": 0,
-        }
-        self.form_6Q_status_count = {
-            "complete": 0,
-            "nodata": 0,
-            "nohtml": 0,
-            "failed": 0,
-        }
 
     def get_raw(self):
         """ Get raw data from source"""
@@ -90,20 +118,17 @@ class Ferc(Runner):
         to_find_data = pd.read_excel(os.path.abspath(input_path), sheet_name=2)
         company_to_find = to_find_data["Company Name (Cleaned)"].drop_duplicates().to_list()
 
-        fetchdate = datetime.now().strftime("%m/%d/%Y")
-        self.out.fetchdate = self.summ.fetchdate = fetchdate
-
         for to_find in company_to_find:
             try:
                 self.start_scraping_process(
-                    "form6", to_find, self.form_6_status_count, self.form_6_out_data
+                    "form6", to_find, self.form6.status_count, self.form6.out_data
                 )
                 self.start_scraping_process(
-                    "form6Q", to_find, self.form_6Q_status_count, self.form_6Q_out_data
+                    "form6Q", to_find, self.form6Q.status_count, self.form6Q.out_data
                 )
-            except Exception as e:
+            except TypeError as e:
                 print(f'Exception Encountered: {e}')
-                pass
+
 
     def start_scraping_process(self, form, to_find, status_count, out_data):
         """Function to Start the Scraping Process with 3 retries"""
@@ -120,7 +145,7 @@ class Ferc(Runner):
                 self.status = "failed - download failed. (Time Out on 3 Retries)"
                 status_count["failed"] += 1
                 out_data.append(
-                    [self.out.fetchdate, to_find, self.status, *self.row_data]
+                    [datetime.now().strftime("%m/%d/%Y"), to_find, self.status, *self.row_data]
                 )
                 break
             retry += 1
@@ -146,12 +171,12 @@ class Ferc(Runner):
         :return: bool, if not success repeat the download process
         """
         print(f"process for {to_find}")
-        with SW.get_driver(download_dir=download_dir, headless=True) as driver:
+        with SW.get_driver(download_dir=download_dir) as driver:
             self.navigate_form(driver, to_find)
             row_element = self.mining_details(driver, to_find, status_count)
             if row_element is None:
                 out_data.append(
-                    [self.out.fetchdate, to_find, self.status, *self.row_data]
+                    [datetime.now().strftime("%m/%d/%Y"), to_find, self.status, *self.row_data]
                 )
                 return True
 
@@ -161,7 +186,7 @@ class Ferc(Runner):
             print(f'download link at: {download_link}')
             SW.get_url(driver, download_link, sleep_seconds=random.randint(1, 5))
 
-            time.sleep(60)
+            time.sleep(30)
 
             try:
                 list_of_files = glob.glob(
@@ -184,7 +209,7 @@ class Ferc(Runner):
             # formatted_download_dir = "\\" + str(download_dir).replace('/', '\\')
             out_data.append(
                 [
-                    self.out.fetchdate,
+                    datetime.now().strftime("%m/%d/%Y"),
                     to_find,
                     self.status,
                     *self.row_data,
@@ -257,11 +282,13 @@ class Ferc(Runner):
         row_elements = []
         for row in rows:
             for data in row.find_elements(By.XPATH, ".//td"):
-                if self.string_filter(to_find) in self.string_filter(
+                if self.string_filter(
                     data.get_attribute("innerText")
-                ):
+                ).startswith(self.string_filter(to_find)):
                     is_name_matched = True
                     row_elements.append(row)
+
+        row_elements = self.sort_row_elements_by_date(row_elements)
 
         data_element = None
         if is_name_matched:
@@ -272,6 +299,7 @@ class Ferc(Runner):
                     )
                     data_element = row_element
                     break
+
                 except NoSuchElementException:
                     pass
 
@@ -288,6 +316,26 @@ class Ferc(Runner):
 
         return data_element
 
+    @staticmethod
+    def sort_row_elements_by_date(row_elements):
+        """Sort Row Elemnts based """
+        row_element_dict = {}
+        date_arr = []
+        final_arr = []
+        for row_element in row_elements:
+            data_elements = row_element.find_elements(By.XPATH, ".//td")
+            date = str(data_elements[2].get_attribute('innerText')).strip()
+            date_arr.append(date)
+            row_element_dict.update({date:row_element})
+
+        date_arr.sort(key=lambda date: datetime.strptime(date, "%m/%d/%Y"), reverse=True)
+
+        for date in date_arr:
+            final_arr.append(row_element_dict[date])
+
+        return final_arr
+
+
     def gather_row_data(self, element):
         """ Gathering Row Data from the Table """
         for count, row in enumerate(element.find_elements(By.XPATH, ".//td")):
@@ -299,10 +347,10 @@ class Ferc(Runner):
 
     def save_output(self, data, **kwargs):
         """Override Save output Function"""
-        form_6_df = self.get_out_df(self.form_6_out_data)
-        form_6Q_df = self.get_out_df(self.form_6Q_out_data)
-        form_6_summ_df = self.get_summarry_df(self.form_6_status_count)
-        form_6Q_summ_df = self.get_summarry_df(self.form_6Q_status_count)
+        form_6_df = self.get_out_df(self.form6.out_data)
+        form_6Q_df = self.get_out_df(self.form6Q.out_data)
+        form_6_summ_df = self.get_summarry_df(self.form6.status_count)
+        form_6Q_summ_df = self.get_summarry_df(self.form6Q.status_count)
 
         temp_prefix = self.prefix
         self.save_final_output(form_6_df, temp_prefix.replace("ferc", "ferc_form_6"))
@@ -322,7 +370,7 @@ class Ferc(Runner):
 
     def get_out_df(self, out_data):
         """ Get Output Data Frame"""
-        dataframe = pd.DataFrame(out_data, columns=self.out.header()[:-1])
+        dataframe = pd.DataFrame(out_data, columns=self.datapoints["out"])
         dataframe.replace(
             to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"],
             value=["", ""],
@@ -334,11 +382,12 @@ class Ferc(Runner):
     def get_summarry_df(self, status_count):
         """ Get Summary Data Frame"""
         summ_data = []
-        summ_data.append([self.summ.fetchdate, "complete", status_count["complete"]])
-        summ_data.append([self.summ.fetchdate, "nodata", status_count["nodata"]])
-        summ_data.append([self.summ.fetchdate, "nohtml", status_count["nohtml"]])
-        summ_data.append([self.summ.fetchdate, "failed", status_count["failed"]])
-        summ_df = pd.DataFrame(summ_data, columns=self.summ.header()[:-1])
+        summ_data.append([datetime.now().strftime("%m/%d/%Y"),
+                          "complete", status_count["complete"]])
+        summ_data.append([datetime.now().strftime("%m/%d/%Y"), "nodata", status_count["nodata"]])
+        summ_data.append([datetime.now().strftime("%m/%d/%Y"), "nohtml", status_count["nohtml"]])
+        summ_data.append([datetime.now().strftime("%m/%d/%Y"), "failed", status_count["failed"]])
+        summ_df = pd.DataFrame(summ_data, columns=self.datapoints["summ"])
         return summ_df
 
     @staticmethod
