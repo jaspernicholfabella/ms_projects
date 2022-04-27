@@ -21,7 +21,7 @@ sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
 
-class FormType:
+class ORMType:
     """ Unique type class to decipher between attributes """
     def __init__(self, key, value):
         self.key = key
@@ -34,11 +34,11 @@ class FormType:
         return int(self.key)
 
 
-class Form:
+class ORM:
     """Basic ORM Class"""
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
-            setattr(self, key, FormType(key, value))
+            setattr(self, key, ORMType(key, value))
 
     @staticmethod
     def attr_1():
@@ -93,8 +93,8 @@ class Ferc(Runner):
                 "grand_total": "//td[contains(text(), 'GRAND TOTAL')]/parent::node()/td"
             },
         }
-        self.form6 = Form()
-        self.form6Q = Form()
+        self.form6 = ORM()
+        self.form6Q = ORM()
         self.form6.out_data = []
         self.form6Q.out_data = []
         self.form6.status_count = {
@@ -110,7 +110,11 @@ class Ferc(Runner):
             "failed": 0,
         }
         self.row_data = []
-        self.form = ""
+        self.blocks = ORM(
+            form = '',
+            status = '',
+            prefix = ''
+        )
 
     def get_raw(self):
         """ Get raw data from source"""
@@ -133,7 +137,7 @@ class Ferc(Runner):
     def start_scraping_process(self, form, to_find, status_count, out_data):
         """Function to Start the Scraping Process with 3 retries"""
         retry = 0
-        self.form = form
+        self.block.form= form
         download_dir = self.generate_download_dir(to_find)
         while True:
             is_file_downloaded = self.download_source_file(
@@ -142,7 +146,7 @@ class Ferc(Runner):
             if is_file_downloaded:
                 break
             if retry >= 3:
-                self.status = "failed - download failed. (Time Out on 3 Retries)"
+                self.block.status = "failed - download failed. (Time Out on 3 Retries)"
                 status_count["failed"] += 1
                 out_data.append(
                     [datetime.now().strftime("%m/%d/%Y"), to_find, self.status, *self.row_data]
@@ -199,11 +203,11 @@ class Ferc(Runner):
             with open(latest_file, "r", encoding="utf8") as file:
                 soup = BeautifulSoup(file, "lxml")
             dom = etree.HTML(str(soup))
-            self.status = "complete"
+            self.block.status = "complete"
             status_count["complete"] += 1
-            if self.form == "form6":
+            if self.block.form== "form6":
                 income_statement_delimeter = 3
-            elif self.form == "form6Q":
+            elif self.block.form== "form6Q":
                 income_statement_delimeter = 5
 
             # formatted_download_dir = "\\" + str(download_dir).replace('/', '\\')
@@ -257,11 +261,11 @@ class Ferc(Runner):
         element_filter = driver.find_element(By.XPATH, "//input[@placeholder='Filter']")
         element_filter.clear()
         element_filter.send_keys("Form 6")
-        if self.form == "form6":
+        if self.block.form== "form6":
             driver.find_element(
                 By.XPATH, "//label[contains(text(),'Form 6')]/parent::node()/input"
             ).click()
-        elif self.form == "form6Q":
+        elif self.block.form== "form6Q":
             driver.find_element(
                 By.XPATH, "//label[contains(text(),'Form 6-Q')]/parent::node()/input"
             ).click()
@@ -306,11 +310,11 @@ class Ferc(Runner):
             if data_element is not None:
                 self.gather_row_data(data_element)
             else:
-                self.status = "nohtml"
+                self.block.status = "nohtml"
                 status_count["nohtml"] += 1
                 self.gather_row_data(row_elements[0])
         else:
-            self.status = "nodata - name not on description"
+            self.block.status = "nodata - name not on description"
             status_count["nodata"] += 1
             self.row_data = ["" for _ in range(0, 12)]
 
@@ -352,7 +356,7 @@ class Ferc(Runner):
         form_6_summ_df = self.get_summarry_df(self.form6.status_count)
         form_6Q_summ_df = self.get_summarry_df(self.form6Q.status_count)
 
-        temp_prefix = self.prefix
+        temp_prefix = self.block.prefix
         self.save_final_output(form_6_df, temp_prefix.replace("ferc", "ferc_form_6"))
         self.save_final_output(form_6Q_df, temp_prefix.replace("ferc", "ferc_form_6Q"))
         self.save_final_output(
@@ -365,7 +369,7 @@ class Ferc(Runner):
     def save_final_output(self, dataframe, filename):
         """Save final output"""
         Path(f"{self.outdir}/{self.output_subdir}").mkdir(parents=True, exist_ok=True)
-        self.prefix = filename
+        self.block.prefix = filename
         super().save_output(dataframe, encoding="utf-8")
 
     def get_out_df(self, out_data):
