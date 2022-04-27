@@ -41,14 +41,14 @@ class Form:
             setattr(self, key, FormType(key, value))
 
     @staticmethod
-    def print_value():
+    def attr_1():
         ''' Adding this for Pylint issues '''
-        print('print_value')
+        print('attr_1')
 
     @staticmethod
-    def length():
+    def attr_2():
         ''' Adding this for Pylint issues '''
-        print('length')
+        print('attr_2')
 
 
 class Ferc(Runner):
