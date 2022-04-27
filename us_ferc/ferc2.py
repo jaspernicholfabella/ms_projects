@@ -110,7 +110,7 @@ class Ferc(Runner):
             "failed": 0,
         }
         self.row_data = []
-        self.blocks = ORM(
+        self.block = ORM(
             form = '',
             status = '',
             prefix = ''
@@ -149,7 +149,7 @@ class Ferc(Runner):
                 self.block.status = "failed - download failed. (Time Out on 3 Retries)"
                 status_count["failed"] += 1
                 out_data.append(
-                    [datetime.now().strftime("%m/%d/%Y"), to_find, self.status, *self.row_data]
+                    [datetime.now().strftime("%m/%d/%Y"), to_find, self.block.status, *self.row_data]
                 )
                 break
             retry += 1
@@ -157,7 +157,7 @@ class Ferc(Runner):
     def generate_download_dir(self, to_find):
         """ Generating Download Directory"""
         file_name = self.string_filter(
-            f"{to_find}_{self.form}", remove_spaces=False
+            f"{to_find}_{self.block.form}", remove_spaces=False
         ).replace(" ", "_")
         download_dir = os.path.abspath(
             f"{self.outdir}/raw/downloaded_html/"
@@ -180,7 +180,7 @@ class Ferc(Runner):
             row_element = self.mining_details(driver, to_find, status_count)
             if row_element is None:
                 out_data.append(
-                    [datetime.now().strftime("%m/%d/%Y"), to_find, self.status, *self.row_data]
+                    [datetime.now().strftime("%m/%d/%Y"), to_find, self.block.status, *self.row_data]
                 )
                 return True
 
@@ -215,7 +215,7 @@ class Ferc(Runner):
                 [
                     datetime.now().strftime("%m/%d/%Y"),
                     to_find,
-                    self.status,
+                    self.block.status,
                     *self.row_data,
                     self.search_downloaded_html(
                         dom,
