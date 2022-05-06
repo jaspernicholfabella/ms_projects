@@ -2,10 +2,9 @@
 import sys
 import re
 from datetime import datetime
-from pathlib import Path
-from bs4 import BeautifulSoup
 import pandas as pd
-from selenium.webdriver.common.by import By
+
+from ..utility_scripts.zenscraper import ZenScraper
 
 sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
@@ -13,6 +12,7 @@ from pyersq.row import Row
 from pyersq.requests_wrapper import RequestsWrapper
 from lxml import etree
 import lxml.html
+
 
 class ORMType:
     """ Unique type class to decipher between attributes """
@@ -109,10 +109,7 @@ class MarkAndSpencer(Runner):
 
         self.get_individual_data(req)
 
-
         return self.fetch_out
-
-
 
     def get_individual_data(self, req):
         for k, dat in enumerate(self.web_data.marker):
@@ -163,7 +160,6 @@ class MarkAndSpencer(Runner):
             except Exception as e:
                 print(e)
 
-
     def normalize(self, raw):
         """Save raw data to file"""
         df = pd.DataFrame(raw, columns=self.out.header()[:-1])
@@ -172,10 +168,8 @@ class MarkAndSpencer(Runner):
         df = df.sort_values(by='Country', key=lambda col: col.str.lower())
         return df
 
-
     def get_inner_text(self, element):
         return self.strip_html(str(etree.tostring(element)))
-
 
     @staticmethod
     def strip_html(data):

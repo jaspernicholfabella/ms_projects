@@ -5,8 +5,9 @@ disable_opts = [
     '--disable=attribute-defined-outside-init',
     '--disable=c-extension-no-member',
     '--disable=unused-argument',
-    '--disable=invalid-name',
     '--disable=no-member'
 ]
-pylint_opts = [*disable_opts, 'us_ferc/ferc2.py']
+python_file = 'global_manufacturing/h_and_m.py'
+# python_file = 'utility_scripts/zenscraper.py'
+pylint_opts = [*disable_opts, python_file]
 pylint.lint.Run(pylint_opts)
