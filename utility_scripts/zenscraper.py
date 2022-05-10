@@ -410,7 +410,7 @@ class By(Enum):
     CLASS_NAME = 7
     CSS_SELECTOR = 8
 
-class ORMType:
+class DataType:
     """Unique type class to decipher between attributes"""
 
     def __init__(self, key, value):
@@ -426,13 +426,13 @@ class ORMType:
         """Return Key"""
         return int(self.key)
 
-class ORM:
+class DataObject:
     """Basic ORM Class"""
 
     def __init__(self, **kwargs):
         """ORM to create classess with variables"""
         for key, value in kwargs.items():
-            setattr(self, key, ORMType(key, value))
+            setattr(self, key, DataType(key, value))
 
     @staticmethod
     def attr_1():

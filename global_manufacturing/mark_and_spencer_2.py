@@ -13,8 +13,6 @@ from ms_projects.utility_scripts.zenscraper import ZenScraper
 from ms_projects.utility_scripts.zenscraper import By
 from ms_projects.utility_scripts.zenscraper import ORM
 
-
-
 class MarkAndSpencer(Runner):
     """Collect data from website"""
 
