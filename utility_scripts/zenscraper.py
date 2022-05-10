@@ -5,6 +5,7 @@ import shutil
 import re
 import csv
 import sys
+import logging
 from pathlib import Path
 import requests
 import lxml.html
@@ -15,6 +16,9 @@ requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 sys.path.append('../../scripts')
 from pyersq.requests_wrapper import RequestsWrapper
 
+logging.basicConfig()
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.WARNING)
 
 class ZenScraper:
     """ ZenScraper , stealth scraping that follows selenium rules. """
@@ -31,11 +35,15 @@ class ZenScraper:
             for element in elements:
                 element_list.append(ZenElement(element))
             if len(element_list) != 0:
+                logger.info('element list generated') #
                 return element_list
-            return err_message
+            logger.warning('no element list found')
+            return []
         except (IndexError, lxml.etree.XPathEvalError,
-                lxml.etree.Error, lxml.etree.XPathError):
-            return err_message
+                lxml.etree.Error, lxml.etree.XPathError) as err:
+            logger.warning(err_message)
+            logger.error(f'{err}') # pylint: disable=logging-fstring-interpolation
+            return None
 
     def __find_element(self, err_message="", xpath="", doc=None):
         """ find single element from the class """
@@ -43,10 +51,35 @@ class ZenScraper:
             if doc is None:
                 doc = self.doc
             element = doc.xpath(xpath)
+            logger.info(f'{ZenElement(element[0]).get_tag()} element found') # pylint: disable=logging-fstring-interpolation
             return ZenElement(element[0])
         except (IndexError, lxml.etree.XPathEvalError, lxml.etree.XPathError,
-                lxml.etree.Error):
-            return err_message
+                lxml.etree.Error) as err:
+            logger.warning(err_message)
+            logger.error(f'{err}') # pylint: disable=logging-fstring-interpolation
+            return None
+
+    @staticmethod
+    def __return_dict_values(by_mode, to_search, doc=None, tag="node()"):
+        output_dict = {
+            1: {'err_message': "<Error: id cannot be found on the html>",
+                'xpath': f'//node()[@id="{to_search}"]',
+                'doc': doc},
+            2: {'err_message': "<Error: element cannot be found on the html>",
+                'xpath': to_search,
+                'doc': doc},
+            3: {'err_message': f"<Error: no element that contains {to_search} in the html>",
+                'xpath': f'//{tag}[normalize-space(text()) = "{to_search}"]',
+                'doc': doc},
+            4: {'err_message': f"<Error: no element that contains {to_search} in the html>",
+                'xpath': f'//{tag}[contains(text(), "{to_search}")]',
+                'doc': doc},
+            6: {'err_message': "<Error: tagname cannot be found on the html>",
+                'xpath': f"//{to_search}",
+                'doc': doc},
+        }
+        return output_dict[by_mode.value]
+
 
     def get(self, url):
         """
@@ -57,7 +90,7 @@ class ZenScraper:
         response = req.get(url)
         self.response = response
         self.doc = lxml.html.fromstring(response.content)
-        return response.content
+        return response
 
     @staticmethod
     def download_file(url, destination_path=""):
@@ -69,7 +102,7 @@ class ZenScraper:
 
         req = RequestsWrapper()
         response = req.get(url)
-        print("downloading: ", url)
+        logger.info(f"downloading: {url}") # pylint: disable=logging-fstring-interpolation
         filename = url.split("/")[-1]
         if destination_path == "":
             file_destination = filename
@@ -81,7 +114,7 @@ class ZenScraper:
             shutil.copyfileobj(response.raw, out_file)
         del response
 
-        # print("ERROR: error on file download ")
+        logger.error('error on file download')
 
     @staticmethod
     def download_from_table(url, destination_path):
@@ -93,11 +126,11 @@ class ZenScraper:
         tables = pd.read_html(
             requests.get(url).text, index_col=0, flavor=["lxml", "bs4"]
         )
-        print("downloading table...")
+        logger.info('downloading table ... ')
         table = tables[0]
         table.to_csv(destination_path)
 
-    def find_elements(self, by_mode, tosearch, doc=None, tag="node()"):
+    def find_elements(self, by_mode, to_search, doc=None, tag="node()"):
         """
         :param by_mode: By Enumerator to search for e.g. XPATH, ID, CLASSNAME
         :param tosearch: the string to search
@@ -105,36 +138,10 @@ class ZenScraper:
         :param tag: works best with LINK_TEXT, PARTIAL_LINK_TEXT
         :return: ZenElement Object
         """
-        output_dict = {
-            1: self.__find_elements_list(
-                err_message="<Error: id cannot be found on the html>",
-                xpath=f'//node()[@id="{tosearch}"]',
-                doc=doc,
-            ),
-            2: self.__find_elements_list(
-                err_message="<Error: element cannot be found on the html>",
-                xpath=tosearch,
-                doc=doc,
-            ),
-            3: self.__find_elements_list(
-                err_message=f"<Error: no element that contains {tosearch} in the html>",
-                xpath=f'//{tag}[normalize-space(text()) = "{tosearch}"]',
-                doc=doc,
-            ),
-            4: self.__find_elements_list(
-                err_message=f"<Error: no element that contains {tosearch} in the html>",
-                xpath=f'//{tag}[contains(text(), "{tosearch}")]',
-                doc=doc,
-            ),
-            6: self.__find_elements_list(
-                err_message="<Error: tagname cannot be found on the html>",
-                xpath=f"//{tosearch}",
-                doc=doc,
-            ),
-        }
-        return output_dict[by_mode.value]
+        output_dict = self.__return_dict_values(by_mode, to_search, doc, tag)
+        return self.__find_elements_list(**output_dict)
 
-    def find_element(self, by_mode, tosearch, doc=None, tag="node()"):
+    def find_element(self, by_mode, to_search, doc=None, tag="node()"):
         """
         :param by: By Enumerator to search for e.g. XPATH, ID, CLASSNAME
         :param tosearch: the string to search
@@ -142,34 +149,9 @@ class ZenScraper:
         :param tag: works best with LINK_TEXT, PARTIAL_LINK_TEXT
         :return: ZenElement Object
         """
-        output_dict = {
-            1: self.__find_element(
-                err_message="<Error: id cannot be found on the html>",
-                xpath=f'//node()[@id="{tosearch}"]',
-                doc=doc,
-            ),
-            2: self.__find_element(
-                err_message="<Error: element cannot be found on the html>",
-                xpath=tosearch,
-                doc=doc,
-            ),
-            3: self.__find_element(
-                err_message=f"<Error: no element that contains {tosearch} in the html>",
-                xpath=f'//{tag}[normalize-space(text()) = "{tosearch}"]',
-                doc=doc,
-            ),
-            4: self.__find_element(
-                err_message=f"<Error: no element that contains {tosearch} in the html>",
-                xpath=f'//{tag}[contains(text(), "{tosearch}")]',
-                doc=doc,
-            ),
-            6: self.__find_element(
-                err_message="<Error: tagname cannot be found on the html>",
-                xpath=f"//{tosearch}",
-                doc=doc,
-            ),
-        }
-        return output_dict[by_mode.value]
+        output_dict = self.__return_dict_values(by_mode, to_search, doc, tag)
+        return self.__find_element(**output_dict)
+
 
     def print_html(self):
         """
@@ -184,7 +166,7 @@ class ZenScraper:
         Print status_code on console
         :return: return status_code as an integer
         """
-        print(self.response.status_code)
+        logger.info(self.response.status_code)
         return self.response.status_code
 
     @staticmethod
@@ -195,10 +177,10 @@ class ZenScraper:
         """
         req = RequestsWrapper()
         response = req.get(url)
-        print(response.status_code)
+        logger.info(response.status_code)
         return response.status_code == 200
 
-    def get_url(self):
+    def show_url(self):
         """
         get the current URL Link
         :return:
@@ -232,20 +214,40 @@ class ZenElement:
                 element_list.append(ZenElement(element))
 
             if len(element_list) != 0:
+                logger.info('element list generated')
                 return element_list
-
-            return err_message
+            logger.warning('no element list generated')
+            return []
 
         except (IndexError, lxml.etree.XPathEvalError, lxml.etree.XPathError,
-                lxml.etree.Error):
-            return err_message
+                lxml.etree.Error) as err:
+            logger.error(err)
+            return None
 
     def __find_element(self, err_message="", xpath=""):
         """ Find ELement"""
         try:
+            logger.info(f'{ZenElement(self.element.xpath(xpath)[0]).get_tag()} element found') # pylint: disable=logging-fstring-interpolation
             return ZenElement(self.element.xpath(xpath)[0])
-        except (lxml.etree.XPathEvalError, lxml.etree.XPathError, lxml.etree.Error):
-            return err_message
+        except (lxml.etree.XPathEvalError, lxml.etree.XPathError, lxml.etree.Error) as err:
+            logger.error(err)
+            return None
+
+    @staticmethod
+    def __return_dict_values(by_mode, to_search, tag="node()"):
+        output_dict = {
+            1: {'err_message': "<Error: id cannot be found on the html>",
+                'xpath': f'//node()[@id="{to_search}"]'},
+            2: {'err_message': "<Error: element cannot be found on the html>",
+                'xpath': to_search},
+            3: {'err_message': f"<Error: no element that contains {to_search} in the html>",
+                'xpath': f'//{tag}[normalize-space(text()) = "{to_search}"]'},
+            4: {'err_message': f"<Error: no element that contains {to_search} in the html>",
+                'xpath': f'//{tag}[contains(text(), "{to_search}")]'},
+            6: {'err_message': "<Error: tagname cannot be found on the html>",
+                'xpath': f"//{to_search}"},
+        }
+        return output_dict[by_mode.value]
 
     def __inner_text(self, inner_text_filter=None):
         """
@@ -270,67 +272,25 @@ class ZenElement:
         string = string.replace("b'", "")[:-1]
         return string
 
-    def find_elements(self, by_mode, tosearch, tag="node()"):
+    def find_elements(self, by_mode, to_search, tag="node()"):
         """
-        :param by: By Enumerator the guide on what to search e.g. By.XPATH, By.TAG_NAME
-        :param tosearch: tosearch on the document body
+        :param by_mode: By Enumerator the guide on what to search e.g. By.XPATH, By.TAG_NAME
+        :param to_search: tosearch on the document body
         :param tag: parent element tag , default node(), means all element
         :return: List of ZenElement Objects
         """
-        output_dict = {
-            1: self.__find_elements_list(
-                err_message="<Error: id cannot be found on the html>",
-                xpath=f'//node()[@id="{tosearch}"]',
-            ),
-            2: self.__find_elements_list(
-                err_message="<Error: element cannot be found on the html>",
-                xpath=tosearch,
-            ),
-            3: self.__find_elements_list(
-                err_message=f"<Error: no element that contains {tosearch} in the html>",
-                xpath=f'//{tag}[normalize-space(text()) = "{tosearch}"]',
-            ),
-            4: self.__find_elements_list(
-                err_message=f"<Error: no element that contains {tosearch} in the html>",
-                xpath=f'//{tag}[contains(text(), "{tosearch}")]',
-            ),
-            6: self.__find_elements_list(
-                err_message="<Error: tagname cannot be found on the html>",
-                xpath=f"//{tosearch}",
-            ),
-        }
-        return output_dict[by_mode.value]
+        output_dict = self.__return_dict_values(by_mode, to_search, tag)
+        return self.__find_elements_list(**output_dict)
 
-    def find_element(self, by_mode, tosearch, tag="node()"):
+    def find_element(self, by_mode, to_search, tag="node()"):
         """
-        :param by: By Enumerator the guide on what to search e.g. By.XPATH, By.TAG_NAME
-        :param tosearch: tosearch on the document body
+        :param by_mode: By Enumerator the guide on what to search e.g. By.XPATH, By.TAG_NAME
+        :param to_search: tosearch on the document body
         :param tag: parent element tag , default node(), means all element
         :return: ZenElement Object
         """
-        output_dict = {
-            1: self.__find_element(
-                err_message="<Error: id cannot be found on the html>",
-                xpath=f'//node()[@id="{tosearch}"]',
-            ),
-            2: self.__find_element(
-                err_message="<Error: element cannot be found on the html>",
-                xpath=tosearch,
-            ),
-            3: self.__find_element(
-                err_message=f"<Error: no element that contains {tosearch} in the html>",
-                xpath=f'//{tag}[normalize-space(text()) = "{tosearch}"]',
-            ),
-            4: self.__find_element(
-                err_message=f"<Error: no element that contains {tosearch} in the html>",
-                xpath=f'//{tag}[contains(text(), "{tosearch}")]',
-            ),
-            6: self.__find_element(
-                err_message="<Error: tagname cannot be found on the html>",
-                xpath=f"//{tosearch}",
-            ),
-        }
-        return output_dict[by_mode.value]
+        output_dict = self.__return_dict_values(by_mode, to_search, tag)
+        return self.__find_element(**output_dict)
 
     def get_attribute(self, attribute="", inner_text_filter=None):
         """
@@ -501,3 +461,14 @@ class UtilFunctions:
             res = req.get(url)
             with open(f'{htmldir}/{filename}.html', 'w', encoding='utf-8') as file:
                 file.write(res.text)
+
+    def save_json(self, url='', jsondir='', file_name='data.json' ):
+        """
+        :param url: url of the html page you want to save
+        :param jsondir: directory on where to save the json
+        :param file_name: the filename on the saved directory
+        :return:
+        """
+        self.create_directory(jsondir)
+        sold_items = requests.get(url)
+        Path(f'{jsondir}/{file_name}.json').write_bytes(sold_items.content)

@@ -1,0 +1,17 @@
+delete_job: awpy-us_vsatdist
+insert_job: awpy-us_vsatdist
+job_type: b
+description: "US VSAT Distributors | Viasat Data"
+
+delete_job: awpy-us_vsatdist-vsatdist
+insert_job: awpy-us_vsatdist-vsatdist
+job_type: c
+command: $PROJECTS_ROOT/projects/us_vsatdist/vsatdist.py -o $OUTDIR_ROOT/us_vsatdist/ -r
+description: "US VSAT Distributors | Viasat Data"
+n_retrys: 3
+box_name: awpy-us_vsatdist
+box_terminator: 1
+machine: awpy-vm
+std_out_file: ${LOGDIR}/us_vsatdist/$AUTO_JOB_NAME.`/bin/date +%Y%m%d`.out
+std_out_file: ${LOGDIR}/us_vsatdist/$AUTO_JOB_NAME.`/bin/date +%Y%m%d`.err
+profile: /ms/dist/eqr/PROJ/webdata-py/dev/config/dev/autosys.profile

@@ -8,7 +8,7 @@ from pyersq.web_runner import Runner
 from pyersq.row import Row
 
 from ms_projects.utility_scripts.zenscraper import ZenScraper
-from ms_projects.utility_scripts.zenscraper import ORM
+from ms_projects.utility_scripts.zenscraper import DataObject
 
 class HandM(Runner):
     """Collect data from website"""
@@ -32,7 +32,7 @@ class HandM(Runner):
         self.fetch_out = []
         self.fetch_date = datetime.now().strftime('%m/%d/%Y')
 
-        self.web_data = ORM()
+        self.web_data = DataObject()
         self.web_data.countries = {}
         self.web_data.factory_types = {}
         self.web_data.product_category = {}

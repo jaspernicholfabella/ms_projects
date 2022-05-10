@@ -1,0 +1,9 @@
+''' Test @@@class_name@@@ fetch robot'''
+from projects.@@@dir_name@@@ import @@@file_name@@@
+
+def test_@@@file_name@@@():
+    '''Test object initial'''
+    argv = "@@@python_file@@@ -o ../out/".split()
+    web = @@@file_name@@@.@@@class_name@@@(argv)
+    assert web
+
