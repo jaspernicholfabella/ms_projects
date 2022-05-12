@@ -44,10 +44,10 @@ def create_files(input_dict):
 
 if __name__ == '__main__':
     input_dict = {
-        'name': 'us_vsatdist',
-        'description': 'US VSAT Distributors | Viasat Data',
-        'python_file': 'vsatdist.py',
-        'output_dir': 'us_vsatdist/',
+        'name': 'us_matterport',
+        'description': 'US Matterport 3D Listings',
+        'python_file': 'zillow.py',
+        'output_dir': 'us_matterport/',
         # 'date_to_run': 'run_calendar: 5thDayOfEveryQuarter',
         'date_to_run': 'days_of_week: mo',
         'qa_start_time': '1:00',

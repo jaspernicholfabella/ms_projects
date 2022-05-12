@@ -2,6 +2,8 @@
 import sys
 from datetime import datetime
 import pandas as pd
+import os
+import json
 
 sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
@@ -34,42 +36,57 @@ class Vsatdist(Runner):
         self.out = Row(self.datapoints['out'])
         self.fetch_out = []
         self.fetch_date = datetime.now().strftime('%m/%d/%Y')
+        self.status = {
+            'success': 0,
+            'notzip': 0,
+            'failed': 0,
+        }
 
     def get_raw(self, **kwargs):
         """ Get raw data from source"""
+        jsondir = f'{self.outdir}/{self.output_subdir}/json/vsatdist'
         for zip_code in self.zip_codes:
-
-            ex_loc_url = self.datapoints['ex_loc_url'].format(zip_code)
-            ex_loc_json = ZenScraper().get_json(ex_loc_url)
-            if ex_loc_json['status'] == 1:
-
-                lat = ex_loc_json['output'][0]['latitude']
-                lng = ex_loc_json['output'][0]['longitude']
-                print(f'Data on {zip_code} {lat} {lng}')
-                url = self.datapoints['base_url'].format('{0:0=5d}'.format(zip_code), lat, lng) # pylint: disable=consider-using-f-string
-                json_data = ZenScraper().get_json(url)
-                self.save_json_file(url, f'data_for_{zip_code}')
-                for data in json_data:
-                    self.fetch_out.append(
-                        [self.fetch_date, '{0:0=5d}'.format(zip_code), data['dealer'], # pylint: disable=consider-using-f-string
-                         data['address'],
-                         data['city'], data['state'], data['zip'], data['type'],
-                         data['latitue'], data['longitude'], data['distance'],
-                         data['elite'], data['mapUrl'], data['mapImage'],
-                         '', data['phone'], data['email']]
-                    )
-
+            full_json_path = jsondir+f'/data_for_data_for_{zip_code}.json'
+            if os.path.isfile(full_json_path):
+                with open(full_json_path) as f:
+                    print(f'scraping from {full_json_path}')
+                    self.scrape_data(json.load(f), zip_code)
+            else:
+                ex_loc_url = self.datapoints['ex_loc_url'].format(zip_code)
+                ex_loc_json = ZenScraper().get_json(ex_loc_url, sleep_seconds=0)
+                if ex_loc_json['status'] == 1:
+                    try:
+                        lat = ex_loc_json['output'][0]['latitude']
+                        lng = ex_loc_json['output'][0]['longitude']
+                        print(f'Data on {zip_code} {lat} {lng}')
+                        url = self.datapoints['base_url'].format('{0:0=5d}'.format(zip_code), lat, lng) # pylint: disable=consider-using-f-string
+                        json_data = ZenScraper().get_json(url, sleep_seconds=0)
+                        self.save_json_file(url, jsondir, f'data_for_{zip_code}')
+                        self.scrape_data(json_data, zip_code)
+                    except KeyError:
+                        print('key error encountered')
         return self.fetch_out
 
-    def save_json_file(self, url, file_name):
+    def scrape_data(self, json_data, zip_code):
+        for data in json_data:
+            self.fetch_out.append(
+                [self.fetch_date, '{0:0=5d}'.format(zip_code), data['dealer'],
+                 # pylint: disable=consider-using-f-string
+                 data['address'],
+                 data['city'], data['state'], data['zip'], data['type'],
+                 data['latitue'], data['longitude'], data['distance'],
+                 data['elite'], data['mapUrl'], data['mapImage'],
+                 '', data['phone'], data['email']]
+            )
+
+    def save_json_file(self, url, dir_name,  file_name):
         '''
         :param url: json_file url
         :param file_name: json file name
         :return:
         '''
-        jsondir = f'{self.outdir}/{self.output_subdir}/json/' \
-                  f'{datetime.now().strftime("%Y_%m_%d")}/vsatdist'
-        UtilFunctions().save_json(url, jsondir, f'data_for_{file_name}')
+
+        UtilFunctions().save_json(url, dir_name, f'data_for_{file_name}')
 
 
     def normalize(self, raw, **kwargs):

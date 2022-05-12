@@ -1,0 +1,17 @@
+delete_job: awpy-us_matterport
+insert_job: awpy-us_matterport
+job_type: b
+description: "US Matterport 3D Listings"
+
+delete_job: awpy-us_matterport-zillow
+insert_job: awpy-us_matterport-zillow
+job_type: c
+command: $PROJECTS_ROOT/projects/us_matterport/zillow.py -o $OUTDIR_ROOT/us_matterport/ -r
+description: "US Matterport 3D Listings"
+n_retrys: 3
+box_name: awpy-us_matterport
+box_terminator: 1
+machine: awpy-vm
+std_out_file: ${LOGDIR}/us_matterport/$AUTO_JOB_NAME.`/bin/date +%Y%m%d`.out
+std_out_file: ${LOGDIR}/us_matterport/$AUTO_JOB_NAME.`/bin/date +%Y%m%d`.err
+profile: /ms/dist/eqr/PROJ/webdata-py/dev/config/dev/autosys.profile

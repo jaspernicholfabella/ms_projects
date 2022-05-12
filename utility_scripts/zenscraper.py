@@ -5,6 +5,7 @@ import shutil
 import re
 import csv
 import sys
+import random
 import logging
 from pathlib import Path
 import requests
@@ -81,13 +82,15 @@ class ZenScraper:
         return output_dict[by_mode.value]
 
 
-    def get(self, url):
+    def get(self, url, sleep_seconds=None):
         """
         :param url: destination url to get document body
         :return:
         """
+        if sleep_seconds == None:
+            sleep_seconds=random.rand_range(1, 3)
         req = RequestsWrapper()
-        response = req.get(url)
+        response = req.get(url, sleep_seconds=sleep_seconds)
         self.response = response
         self.doc = lxml.html.fromstring(response.content)
         return response
@@ -170,13 +173,15 @@ class ZenScraper:
         return self.response.status_code
 
     @staticmethod
-    def check_link(url):
+    def check_link(url, sleep_seconds=None):
         """
         :param url: url of the link to check
         :return: check if link exists
         """
+        if sleep_seconds == None:
+            sleep_seconds=random.rand_range(1, 3)
         req = RequestsWrapper()
-        response = req.get(url)
+        response = req.get(url, sleep_seconds=sleep_seconds)
         logger.info(response.status_code)
         return response.status_code == 200
 
@@ -188,13 +193,15 @@ class ZenScraper:
         return str(self.response.url)
 
     @staticmethod
-    def get_json(url):
+    def get_json(url, sleep_seconds):
         """
         :param url: url to get json
         :return: json file
         """
+        if sleep_seconds == None:
+            sleep_seconds=random.rand_range(1, 3)
         req = RequestsWrapper()
-        res = req.get(url)
+        res = req.get(url, sleep_seconds=sleep_seconds)
         return res.json()
 
 class ZenElement:
