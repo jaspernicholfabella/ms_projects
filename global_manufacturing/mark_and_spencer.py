@@ -119,8 +119,8 @@ class MarkAndSpencer(Runner):
         for k, dat in enumerate(self.web_data.marker):
             try:
                 print(k, dat)
-                if k == 20:
-                    break
+                # if k == 20:
+                #     break
                 inner_text_filter = ['&#160;', '&#13;',
                                      '\\n', 'Female', 'Male', "b'", "'"]
                 z_scraper = ZenScraper()
@@ -139,21 +139,7 @@ class MarkAndSpencer(Runner):
                 worker_group = self.get_worker_group(elements, inner_text_filter)
 
                 date_element = z_scraper.find_element(
-                    By.XPATH, "//small[contains(text(), 'FOOD')]")
-                # split_on_as_of = date_element.get_attribute(
-                #     'innerText').split('AS OF')
-                #
-                # temp_date = []
-                # for index in [1, 2]:
-                #     temp_date.append(
-                #         f"{split_on_as_of[index].split('20')[0].strip().title()}, "
-                #         f"20{split_on_as_of[index].split('20')[1].strip()[:2]}")
-                #
-                # if self.tag.product_category[dat['tag']
-                #                              ]['factory_type'] == 'Food':
-                #     update_date = temp_date[0]
-                # else:
-                #     update_date = temp_date[1]
+                    By.XPATH, "//small[contains(text(), 'FOOD')]").get_attribute('innerText', inner_text_filter=inner_text_filter)
 
                 self.fetch_out.append([self.fetch_date, 'M&S', self.web_data.region[dat['region']],
                                        dat['title'], dat['address'], *['' for _ in range(3)],
@@ -162,7 +148,7 @@ class MarkAndSpencer(Runner):
                                        self.tag.product_category[dat['tag']]['product_category'],
                                        dat['num_worker'], *['' for _ in range(2)],
                                        worker[0], worker[1],
-                                       *['' for _ in range(4)], worker_group, date_element])
+                                       *['' for _ in range(4)], worker_group, date_element.replace('&amp', '&')])
             except lxml.etree.Error as err:
                 print(err)
 
