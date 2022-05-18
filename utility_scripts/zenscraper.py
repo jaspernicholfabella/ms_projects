@@ -88,7 +88,7 @@ class ZenScraper:
         :return:
         """
         if sleep_seconds == None:
-            sleep_seconds=random.rand_range(1, 3)
+            sleep_seconds=random.randint(1, 3)
         req = RequestsWrapper()
         response = req.get(url, sleep_seconds=sleep_seconds)
         self.response = response
@@ -179,7 +179,7 @@ class ZenScraper:
         :return: check if link exists
         """
         if sleep_seconds == None:
-            sleep_seconds=random.rand_range(1, 3)
+            sleep_seconds=random.randint(1, 3)
         req = RequestsWrapper()
         response = req.get(url, sleep_seconds=sleep_seconds)
         logger.info(response.status_code)
@@ -193,13 +193,13 @@ class ZenScraper:
         return str(self.response.url)
 
     @staticmethod
-    def get_json(url, sleep_seconds):
+    def get_json(url, sleep_seconds=None):
         """
         :param url: url to get json
         :return: json file
         """
         if sleep_seconds == None:
-            sleep_seconds=random.rand_range(1, 3)
+            sleep_seconds=random.randint(1, 3)
         req = RequestsWrapper()
         res = req.get(url, sleep_seconds=sleep_seconds)
         return res.json()
