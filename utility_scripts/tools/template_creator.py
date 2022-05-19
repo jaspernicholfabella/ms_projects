@@ -26,7 +26,7 @@ def delete_lines(fname = 'test.txt', x = 8):
             if len(line) <= x:
                 f.write(line)
 
-def create_files(input_dict, nojil = False):
+def create_files(input_dict):
     UtilFunctions().create_directory(input_dict['name'])
     python_file = f"{input_dict['name']}/{input_dict['python_file']}"
     shutil.copy('base_template.base', python_file)
@@ -39,18 +39,15 @@ def create_files(input_dict, nojil = False):
     replace_text(test_file, '@@@dir_name@@@', input_dict['name'])
     replace_text(test_file, '@@@file_name@@@', input_dict['python_file'].replace('.py', ''))
     replace_text(test_file, '@@@python_file@@@', input_dict['python_file'])
-    if nojil:
-        pass
-    else:
-        jil = JILCreate(**input_dict)
-        jil.generate_jil()
+    jil = JILCreate(**input_dict)
+    jil.generate_jil()
 
 if __name__ == '__main__':
     input_dict = {
-        'name': 'global_brands',
-        'description': 'Global Brands Foot Traffic Tracker',
-        'python_file': 'brands.py',
-        'output_dir': 'global_brands/',
+        'name': 'us_matterpoint',
+        'description': 'US Matterpoint',
+        'python_file': 'redfin.py',
+        'output_dir': 'us_matterpoint/',
         # 'date_to_run': 'run_calendar: 5thDayOfEveryQuarter',
         'date_to_run': 'days_of_week: tue',
         'qa_start_time': '11:00',

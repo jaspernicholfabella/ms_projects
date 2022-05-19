@@ -63,7 +63,7 @@ class Vsatdist(Runner):
                         data = json.load(latlong_file)
                         latlng_arr = data['{0:0=5d}'.format(zip_code)]
                     except KeyError:
-                        latlng_arr = []
+                        pass
 
                 if latlng_arr != []:
                     try:
@@ -112,7 +112,7 @@ class Vsatdist(Runner):
 def main(argv):
     """Main entry"""
     web = Vsatdist(argv)
-    web.run2()
+    web.run()
 
 if __name__ == "__main__":
     main(sys.argv)
