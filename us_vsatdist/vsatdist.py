@@ -44,6 +44,11 @@ class Vsatdist(Runner):
 
     def get_raw(self, **kwargs):
         """ Get raw data from source"""
+        with open(f'{self.outdir}/input/zip_codes_latlong.json') as latlong_file:
+            data = json.load(latlong_file)
+            latlngarr = data['01031']
+            print(latlngarr)
+
         jsondir = f'{self.outdir}/{self.output_subdir}/json/vsatdist'
         for zip_code in self.zip_codes:
             full_json_path = jsondir+f'/data_for_data_for_{zip_code}.json'
@@ -52,12 +57,18 @@ class Vsatdist(Runner):
                     print(f'scraping from {full_json_path}')
                     self.scrape_data(json.load(f), zip_code)
             else:
-                ex_loc_url = self.datapoints['ex_loc_url'].format(zip_code)
-                ex_loc_json = ZenScraper().get_json(ex_loc_url, sleep_seconds=0)
-                if ex_loc_json['status'] == 1:
+                latlng_arr = []
+                with open(f'{self.outdir}/input/zip_codes_latlong.json') as latlong_file:
                     try:
-                        lat = ex_loc_json['output'][0]['latitude']
-                        lng = ex_loc_json['output'][0]['longitude']
+                        data = json.load(latlong_file)
+                        latlng_arr = data['{0:0=5d}'.format(zip_code)]
+                    except KeyError:
+                        latlng_arr = []
+
+                if latlng_arr != []:
+                    try:
+                        lat = latlng_arr[1]
+                        lng = latlng_arr[0]
                         print(f'Data on {zip_code} {lat} {lng}')
                         url = self.datapoints['base_url'].format('{0:0=5d}'.format(zip_code), lat, lng) # pylint: disable=consider-using-f-string
                         json_data = ZenScraper().get_json(url, sleep_seconds=0)
@@ -65,6 +76,7 @@ class Vsatdist(Runner):
                         self.scrape_data(json_data, zip_code)
                     except KeyError:
                         print('key error encountered')
+
         return self.fetch_out
 
     def scrape_data(self, json_data, zip_code):
@@ -100,7 +112,7 @@ class Vsatdist(Runner):
 def main(argv):
     """Main entry"""
     web = Vsatdist(argv)
-    web.run()
+    web.run2()
 
 if __name__ == "__main__":
     main(sys.argv)

@@ -26,7 +26,7 @@ def delete_lines(fname = 'test.txt', x = 8):
             if len(line) <= x:
                 f.write(line)
 
-def create_files(input_dict):
+def create_files(input_dict, nojil = False):
     UtilFunctions().create_directory(input_dict['name'])
     python_file = f"{input_dict['name']}/{input_dict['python_file']}"
     shutil.copy('base_template.base', python_file)
@@ -39,8 +39,11 @@ def create_files(input_dict):
     replace_text(test_file, '@@@dir_name@@@', input_dict['name'])
     replace_text(test_file, '@@@file_name@@@', input_dict['python_file'].replace('.py', ''))
     replace_text(test_file, '@@@python_file@@@', input_dict['python_file'])
-    jil = JILCreate(**input_dict)
-    jil.generate_jil()
+    if nojil:
+        pass
+    else:
+        jil = JILCreate(**input_dict)
+        jil.generate_jil()
 
 if __name__ == '__main__':
     input_dict = {

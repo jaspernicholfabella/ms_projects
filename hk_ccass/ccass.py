@@ -37,15 +37,22 @@ class Ccass(Runner):
         self.out = Row(self.datapoints['out'])
         self.fetch_out = []
         self.fetch_date = datetime.now().strftime('%m/%d/%Y')
+        self.stock_list = []
 
     def get_raw(self, **kwargs):
         """ Get raw data from source"""
-        to_find = ['00001', '00002', '00003', '00004', '00005', '00006', '00007', '00008', '00009', '00010']
-        with SW.get_driver(headless=False) as driver:
-            driver.get_url(self, sleep_seconds=1)
-            pass
-
+        self.get_stock_list()
         return self.fetch_out
+
+
+    def get_stock_list(self):
+        current_date = datetime.now().strftime('%Y%m%d')
+        json_data = ZenScraper.get_json(f'https://www3.hkexnews.hk/sdw/'
+                                        f'search/stocklist.aspx?'
+                                        f'sortby=stockcode&shareholdingdate={current_date}')
+        for data in json_data:
+            self.stock_list.append({data['c'] : data['n']})
+
 
     def normalize(self, raw, **kwargs):
         """Save raw data to file"""
