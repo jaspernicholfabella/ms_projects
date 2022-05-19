@@ -47,7 +47,7 @@ class MarkAndSpencer(Runner):
                 'SupplierGroup',
                 'SupplierGrading',
                 'Relation',
-                'FactoryType',
+                'ProductCategory',
                 'WorkersCnt',
                 'MaleCnt',
                 'WomenCnt',
@@ -122,7 +122,7 @@ class MarkAndSpencer(Runner):
                 # if k == 20:
                 #     break
                 inner_text_filter = ['&#160;', '&#13;',
-                                     '\\n', 'Female', 'Male', "b'", "'"]
+                                     '\\n', 'Female', 'Male', "b'", "'", "|"]
                 z_scraper = ZenScraper()
                 z_scraper.get(
                     self.datapoints['map_url'].format(
@@ -143,12 +143,17 @@ class MarkAndSpencer(Runner):
 
                 self.fetch_out.append([self.fetch_date, 'M&S', self.web_data.region[dat['region']],
                                        dat['title'], dat['address'], *['' for _ in range(3)],
-                                       self.tag.product_category[dat['tag']]['factory_type'],
+                                       self.tag.product_category[dat['tag']]['product_category'],
                                        *['' for _ in range(3)],
                                        self.tag.product_category[dat['tag']]['product_category'],
                                        dat['num_worker'], *['' for _ in range(2)],
                                        worker[0], worker[1],
-                                       *['' for _ in range(4)], worker_group, date_element.replace('&amp', '&')])
+                                       *['' for _ in range(4)], worker_group, date_element
+                                      .replace('&amp', '&')
+                                      .replace('|', '')
+                                      .replace('DATA AS OF', '')
+                                      .replace('  ', ' ')
+                                      .replace(';', '')])
             except lxml.etree.Error as err:
                 print(err)
 

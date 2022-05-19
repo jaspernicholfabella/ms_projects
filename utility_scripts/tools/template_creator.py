@@ -44,14 +44,14 @@ def create_files(input_dict):
 
 if __name__ == '__main__':
     input_dict = {
-        'name': 'us_matterport',
-        'description': 'US Matterport 3D Listings',
-        'python_file': 'zillow.py',
-        'output_dir': 'us_matterport/',
+        'name': 'global_brands',
+        'description': 'Global Brands Foot Traffic Tracker',
+        'python_file': 'brands.py',
+        'output_dir': 'global_brands/',
         # 'date_to_run': 'run_calendar: 5thDayOfEveryQuarter',
-        'date_to_run': 'days_of_week: mo',
-        'qa_start_time': '1:00',
-        'prod_start_time': '2:00'
+        'date_to_run': 'days_of_week: tue',
+        'qa_start_time': '11:00',
+        'prod_start_time': '12:00'
     }
 
     create_files(input_dict)
