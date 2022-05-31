@@ -21,6 +21,7 @@ sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
 from pyersq.row import Row
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
+import pyersq.utils as squ
 
 from ms_projects.utility_scripts.zenscraper import ZenScraper, By, DataObject, UtilFunctions
 
@@ -32,9 +33,11 @@ class @@@class_name@@@(Runner):
             "out": ['FetchDate'],
         }
 
+        self.parser = squ.get_parser()
         self.out = Row(self.datapoints['out'])
         self.fetch_out = []
         self.fetch_date = datetime.now().strftime('%m/%d/%Y')
+
 
     def get_raw(self, **kwargs):
         """ Get raw data from source"""

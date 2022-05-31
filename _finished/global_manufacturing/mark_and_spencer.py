@@ -5,7 +5,7 @@ import lxml.html
 import lxml
 
 import pandas as pd
-sys.path.append('../../scripts')
+sys.path.append('../../../scripts')
 from pyersq.row import Row
 from pyersq.web_runner import Runner
 

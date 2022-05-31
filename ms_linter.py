@@ -7,7 +7,7 @@ disable_opts = [
     '--disable=unused-argument',
     '--disable=no-member'
 ]
-python_file = 'us_vsatdist/vsatdist.py'
+python_file = 'us_matterpoint/vsatdist.py'
 # python_file = 'utility_scripts/zenscraper.py'
 pylint_opts = [*disable_opts, python_file]
 pylint.lint.Run(pylint_opts)

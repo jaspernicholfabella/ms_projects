@@ -2,26 +2,17 @@
 import sys
 import json
 import os
-import glob
 import time
-import random
 import re
 from datetime import datetime
-from pathlib import Path
 import pandas as pd
-from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.support import expected_conditions as EC
-from dateutil.relativedelta import relativedelta
-from bs4 import BeautifulSoup
-from lxml import etree
 
 sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
 from pyersq.row import Row
+import pyersq.utils as squ
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
 
 from ms_projects.utility_scripts.zenscraper import ZenScraper, DataObject, UtilFunctions
@@ -36,7 +27,7 @@ class Redfin(Runner):
             "web_search_for_rent": "https://www.redfin.com/county/{}/apartments-for-rent",
             "out": ['FetchDate', 'Website', 'Type', 'State', 'County', 'Total Properties', 'With 3D Tours'],
         }
-
+        self.parser = squ.get_parser()
         self.out = Row(self.datapoints['out'])
         self.fetch_out = []
         self.fetch_date = datetime.now().strftime('%m/%d/%Y')
@@ -51,6 +42,11 @@ class Redfin(Runner):
         county_name_list = to_find_data['County_NAME'].to_list()
 
         for count,val in enumerate(county_name_list):
+
+            if UtilFunctions().is_partial_run(self.parser):
+                if count > 2:
+                    self.fetch_out = UtilFunctions().end_partial_run(self.fetch_out, self.out.header())
+                    break
 
             state_name = state_name_list[count]
             self.search_for = val
@@ -67,14 +63,14 @@ class Redfin(Runner):
                     self.fetch_out.append([self.fetch_date, 'Redfin', 'Rent',
                                           self.state_code, self.search_for, self.filter_result(all_homes),
                                           self.filter_result(home_with_tour)])
-
-
         return self.fetch_out
 
 
     @staticmethod
     def filter_result(result):
-        result = result.lower().replace('see', '').replace('homes', '').strip()
+        result = result.lower().replace('see', '')\
+            .replace('homes', '')\
+            .replace('no results', '0').strip()
         return result
 
     def browse_web(self, driver, county_code, is_for_rent=False):

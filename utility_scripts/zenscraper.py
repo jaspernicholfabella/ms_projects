@@ -8,6 +8,7 @@ import sys
 import random
 import logging
 from pathlib import Path
+from bs4 import BeautifulSoup
 import requests
 import lxml.html
 from lxml import etree
@@ -81,7 +82,6 @@ class ZenScraper:
         }
         return output_dict[by_mode.value]
 
-
     def get(self, url, sleep_seconds=None):
         """
         :param url: destination url to get document body
@@ -102,7 +102,6 @@ class ZenScraper:
         :param destination_path: directory with file name to store image data
         :return:
         """
-
         req = RequestsWrapper()
         response = req.get(url)
         logger.info(f"downloading: {url}") # pylint: disable=logging-fstring-interpolation
@@ -120,18 +119,50 @@ class ZenScraper:
         logger.error('error on file download')
 
     @staticmethod
-    def download_from_table(url, destination_path):
+    def get_html_table(*args, driver=None, table_index=0, with_header=False):
         """
-        :param url: get table as csv
-        :param destination_path: destination path to create csv file
-        :return:
+        Getting HTMl Table from <table> tag inside an html
+        :param args: argument for bs4 soup.find_all
+        :param driver: selenium driver to scrape table data
+        :param table_index: index of the table to be sraped
+        :param with_header: boolean if table header will be included in the scrape
+        :return: list of dict if with_header == True, list of list if with_header == False
         """
-        tables = pd.read_html(
-            requests.get(url).text, index_col=0, flavor=["lxml", "bs4"]
-        )
-        logger.info('downloading table ... ')
-        table = tables[0]
-        table.to_csv(destination_path)
+        logger.warning('scraping HTML table from page_source')
+        soup = BeautifulSoup(driver.page_source, 'lxml')
+        if len(args) > 0:
+            tables = soup.find_all('table', *args)
+        else:
+            tables = soup.find_all('table')
+
+        table_body = tables[table_index].find('tbody')
+        if with_header:
+            table_header = tables[table_index].find('thead')
+            header = []
+            table_data = []
+            for row in table_header.find_all('tr'):
+                for count, col in enumerate(row.find_all('th')):
+                    val = col.text.strip()
+                    if len(val) == 0:
+                        header.append(str(count))
+                        continue
+                    header.append(col.text.strip())
+
+            for row in table_body.find_all('tr'):
+                data = {}
+                for count, col in enumerate(row.find_all('td')):
+                    val = col.text.strip()
+                    data.update({header[count]:val})
+                table_data.append(data)
+            return table_data
+        else:
+            table_data = []
+            for row in table_body.find_all('tr'):
+                data = []
+                for col in enumerate(row.find_all('td')):
+                    data.append(col.text.strip())
+                table_data.append(data)
+            return table_data
 
     def find_elements(self, by_mode, to_search, doc=None, tag="node()"):
         """
@@ -154,7 +185,6 @@ class ZenScraper:
         """
         output_dict = self.__return_dict_values(by_mode, to_search, doc, tag)
         return self.__find_element(**output_dict)
-
 
     def print_html(self):
         """
@@ -424,31 +454,6 @@ class UtilFunctions:
         """ Create a directory """
         Path(dir_name).mkdir(parents=True, exist_ok=True)
 
-    @staticmethod
-    def html_tables_to_csv(url, destination_file="test.csv"):
-        """ convert HTML tables to csv file """
-        if os.path.exists(destination_file):
-            os.remove(destination_file)
-
-        scraper = ZenScraper()
-        scraper.get(url)
-        tables = scraper.find_elements(By.TAG_NAME, 'table')
-        for table in tables:
-            table_row = table.find_elements(By.TAG_NAME, 'tr')
-            for table_data in table_row:
-                table_div = table_data.find_elements(By.TAG_NAME, 'td')
-                row_list = []
-                for dat in table_div:
-                    clean_data = (
-                        dat.get_attribute('innerText', inner_text_filter=['\\n', '=', '=-'])
-                    )
-                    row_list.append(clean_data)
-
-                with open(destination_file, "a", newline="", encoding='utf-8') as f_object:
-                    writer_object = csv.writer(f_object)
-                    writer_object.writerow(row_list)
-                    f_object.close()
-
     def save_html(self, url='', htmldir='', filename='', driver=None):
         """
         :param url: url of the html page you want to save
@@ -479,3 +484,14 @@ class UtilFunctions:
         self.create_directory(jsondir)
         sold_items = requests.get(url)
         Path(f'{jsondir}/{file_name}.json').write_bytes(sold_items.content)
+
+    def is_partial_run(self, parser):
+        """ Create a Partial run based on an argument """
+        return parser.parse_args().run
+
+    def end_partial_run(self, fetch, header):
+        """ End Partial Run based on an argument """
+        length = len(header)
+        fetch_arr = fetch
+        fetch_arr.append(['#----------------------End of Partial Run---------------------#'])
+        return fetch_arr

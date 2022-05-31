@@ -5,7 +5,7 @@ import pandas as pd
 import os
 import json
 
-sys.path.append('../../scripts')
+sys.path.append('../../../scripts')
 from pyersq.web_runner import Runner
 from pyersq.row import Row
 

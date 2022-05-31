@@ -3,6 +3,7 @@ import sys
 import shutil
 import fileinput
 import logging
+import requests
 sys.path.append('../../../scripts')
 from ms_projects.utility_scripts.zenscraper import UtilFunctions
 from jil_maker import JILCreate
@@ -39,15 +40,14 @@ def create_files(input_dict):
     replace_text(test_file, '@@@dir_name@@@', input_dict['name'])
     replace_text(test_file, '@@@file_name@@@', input_dict['python_file'].replace('.py', ''))
     replace_text(test_file, '@@@python_file@@@', input_dict['python_file'])
-    jil = JILCreate(**input_dict)
-    jil.generate_jil()
+
 
 if __name__ == '__main__':
     input_dict = {
-        'name': 'us_matterpoint',
-        'description': 'US Matterpoint',
-        'python_file': 'redfin.py',
-        'output_dir': 'us_matterpoint/',
+        'name': 'br_ecomsite',
+        'description': 'BR eCommerce Sites',
+        'python_file': 'ecomsite.py',
+        'output_dir': 'br_ecomsite',
         # 'date_to_run': 'run_calendar: 5thDayOfEveryQuarter',
         'date_to_run': 'days_of_week: tue',
         'qa_start_time': '11:00',
