@@ -67,10 +67,10 @@ class Ecomsite(Runner):
 
                     table_data = ZenScraper().get_html_table(driver=driver, id='theTable')
                     for data in table_data:
-                        self.fetch_out.append([self.fetch_date, url, 'Sales Index', geog, *data])
+                        self.fetch_out.append([self.fetch_date, self.get_sales_index(url), geog, *data])
 
             except Exception as e: #pylint: disable=broad-except
-                self.fetch_out.append([self.fetch_date, self.get_sales_index(url), geog, *['' for _ in range(6)]])
+                self.fetch_out.append([self.fetch_date, self.get_sales_index(url), geog, *['' for _ in range(5)]])
                 print(e)
 
         return self.fetch_out
