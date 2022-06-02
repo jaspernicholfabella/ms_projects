@@ -23,18 +23,16 @@ from pyersq.row import Row
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
 import pyersq.utils as squ
 
-from ms_projects.utility_scripts.zenscraper import ZenScraper
+from ms_projects.utility_scripts.zenscraper import ZenScraper, UtilFunctions
 
 class Ecomsite(Runner):
     """Collect data from website"""
     def __init__(self, argv):
-        super().__init__(argv, output_prefix='ecomsite', output_subdir="raw", output_type='csv')
-        self.datapoints = {
-            "out": ['FetchDate'],
-        }
+        super().__init__(argv, output_prefix='ecomsite', output_subdir="raw", output_type='excel')
 
         self.parser = squ.get_parser()
-        self.out = Row(self.datapoints['out'])
+        self.header = ['FetchDate', 'Category', 'Geography']
+        self.is_header_added = False
         self.fetch_out = []
         self.fetch_date = datetime.now().strftime('%m/%d/%Y')
 
@@ -42,30 +40,53 @@ class Ecomsite(Runner):
     def get_raw(self, **kwargs):
         """ Get raw data from source"""
         input_data = pd.read_csv(os.path.abspath(f'{self.outdir}/input/ecomsite_input.csv'))
-        url_list = input_data['Links'].drop_duplicates().to_list()
+        url_dict = input_data.set_index('Links').to_dict()['Geography']
 
-        for url in url_list:
-            with SW.get_driver() as driver:
-                SW.get_url(driver, url, sleep_seconds=0)
-                WebDriverWait(driver, 60).until(
-                    EC.frame_to_be_available_and_switch_to_it(
-                        (By.XPATH, )
+        for count, (url, geog) in enumerate(url_dict.items()):
+            try:
+                with SW.get_driver() as driver:
+                    SW.get_url(driver, url, sleep_seconds=1)
+
+                    if UtilFunctions().is_partial_run(self.parser):
+                        if count > 3:
+                            self.fetch_out = UtilFunctions.end_partial_run(self.fetch_out)
+                            break
+
+                    WebDriverWait(driver, 60).until(
+                        EC.frame_to_be_available_and_switch_to_it(
+                            (By.XPATH, "//iframe[contains(@title, 'Table Master')]")
+                        )
                     )
-                )
-                time.sleep(5)
-                table_data = ZenScraper().get_html_table(driver=driver, with_header=True)
-                for data in table_data:
-                    print(data)
+
+                    time.sleep(5)
+                    if not self.is_header_added:
+                        table_header = ZenScraper().get_html_table(driver=driver, just_header=True, id='theTable')
+                        for header in table_header:
+                            self.header.append(header)
+                        self.is_header_added = True
+
+                    table_data = ZenScraper().get_html_table(driver=driver, id='theTable')
+                    for data in table_data:
+                        self.fetch_out.append([self.fetch_date, url, 'Sales Index', geog, *data])
+
+            except Exception as e: #pylint: disable=broad-except
+                self.fetch_out.append([self.fetch_date, self.get_sales_index(url), geog, *['' for _ in range(6)]])
+                print(e)
 
         return self.fetch_out
 
-    def save_output(self, data, **kwargs):
-        """Save final data to output file"""
-        self.save_output_csv(data, index=True)
+    @staticmethod
+    def get_sales_index(url):
+        if 'de-faturamento' in url:
+            return 'Sales Index'
+        elif 'de-vendas' in url:
+            return 'Orders Index'
+        elif 'de-tiquete' in url:
+            return 'Average Ticket Index'
 
     def normalize(self, raw, **kwargs):
         """Save raw data to file"""
-        data_frame = pd.DataFrame(raw, columns=self.out.header()[:-1])
+        data_frame = pd.DataFrame(raw, columns=self.header)
         data_frame.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"],
                    value=["", ""], regex=True, inplace=True)
 

@@ -54,15 +54,17 @@ class Redfin(Runner):
             self.state_code, county_code = self.get_county_code(state_name)
             with SW.get_driver() as driver:
                 if county_code != '':
+                    self.out.objectkey = self.out.compute_key()
+
                     all_homes, home_with_tour = self.browse_web(driver, county_code)
                     self.fetch_out.append([self.fetch_date, 'Redfin', 'Buy',
                                           self.state_code, self.search_for, self.filter_result(all_homes),
-                                          self.filter_result(home_with_tour)])
+                                          self.filter_result(home_with_tour), self.out.values()[-1]])
 
                     all_homes, home_with_tour = self.browse_web(driver, county_code, is_for_rent=True)
                     self.fetch_out.append([self.fetch_date, 'Redfin', 'Rent',
                                           self.state_code, self.search_for, self.filter_result(all_homes),
-                                          self.filter_result(home_with_tour)])
+                                          self.filter_result(home_with_tour), self.out.values()[-1]])
         return self.fetch_out
 
 

@@ -1,4 +1,4 @@
-"""Zenscraper Python Library"""
+"""Zenscraper Python Library v 0.2"""
 from enum import Enum
 import os
 import shutil
@@ -20,8 +20,9 @@ from pyersq.requests_wrapper import RequestsWrapper
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
+logger.setLevel(logging.INFO)
 
+# zenscraper version 0.2b
 class ZenScraper:
     """ ZenScraper , stealth scraping that follows selenium rules. """
     doc = None
@@ -87,7 +88,7 @@ class ZenScraper:
         :param url: destination url to get document body
         :return:
         """
-        if sleep_seconds == None:
+        if sleep_seconds is None:
             sleep_seconds=random.randint(1, 3)
         req = RequestsWrapper()
         response = req.get(url, sleep_seconds=sleep_seconds)
@@ -119,50 +120,71 @@ class ZenScraper:
         logger.error('error on file download')
 
     @staticmethod
-    def get_html_table(*args, driver=None, table_index=0, with_header=False):
+    def get_html_table(driver=None, table_index=0, just_header=False, with_header=False, **kwargs): #pylint: disable=too-many-locals,too-many-branches
         """
         Getting HTMl Table from <table> tag inside an html
-        :param args: argument for bs4 soup.find_all
         :param driver: selenium driver to scrape table data
         :param table_index: index of the table to be sraped
+        :param just_header: return an array of table header
         :param with_header: boolean if table header will be included in the scrape
         :return: list of dict if with_header == True, list of list if with_header == False
         """
-        logger.warning('scraping HTML table from page_source')
-        soup = BeautifulSoup(driver.page_source, 'lxml')
-        if len(args) > 0:
-            tables = soup.find_all('table', *args)
-        else:
-            tables = soup.find_all('table')
+        try:
+            logger.info('scraping HTML table from page_source')
+            soup = BeautifulSoup(driver.page_source, 'lxml')
+            if len(kwargs) > 0:
+                tables = soup.find_all('table', **kwargs)
+            else:
+                tables = soup.find_all('table')
 
-        table_body = tables[table_index].find('tbody')
-        if with_header:
-            table_header = tables[table_index].find('thead')
-            header = []
-            table_data = []
-            for row in table_header.find_all('tr'):
-                for count, col in enumerate(row.find_all('th')):
-                    val = col.text.strip()
-                    if len(val) == 0:
-                        header.append(str(count))
-                        continue
-                    header.append(col.text.strip())
+            table_body = tables[table_index].find('tbody')
 
-            for row in table_body.find_all('tr'):
-                data = {}
-                for count, col in enumerate(row.find_all('td')):
-                    val = col.text.strip()
-                    data.update({header[count]:val})
-                table_data.append(data)
-            return table_data
-        else:
+            if just_header:
+                logger.info('scraping the header of the HTML table')
+                table_header = tables[table_index].find('thead')
+                header = []
+                for row in table_header.find_all('tr'):
+                    for count, col in enumerate(row.find_all('th')):
+                        val = col.text.strip()
+                        if len(val) == 0:
+                            header.append(str(count))
+                            continue
+                        header.append(col.text.strip())
+                    return header
+
+            if with_header:
+                logger.info('Scraping header of the HTML table with content')
+                table_header = tables[table_index].find('thead')
+                header = []
+                table_data = []
+                for row in table_header.find_all('tr'):
+                    for count, col in enumerate(row.find_all('th')):
+                        val = col.text.strip()
+                        if len(val) == 0:
+                            header.append(str(count))
+                            continue
+                        header.append(col.text.strip())
+
+                for row in table_body.find_all('tr'):
+                    data = {}
+                    for count, col in enumerate(row.find_all('td')):
+                        val = col.text.strip()
+                        data.update({header[count]:val})
+                    table_data.append(data)
+                return table_data
+
+            logger.info('Scraping the body of the HTML table')
             table_data = []
             for row in table_body.find_all('tr'):
                 data = []
-                for col in enumerate(row.find_all('td')):
+                for col in row.find_all('td'):
                     data.append(col.text.strip())
                 table_data.append(data)
             return table_data
+        except Exception as err: #pylint: disable=broad-except
+            logger.error('HTML Table scraping failed!!!')
+            logger.error(err)
+            return []
 
     def find_elements(self, by_mode, to_search, doc=None, tag="node()"):
         """
@@ -208,7 +230,7 @@ class ZenScraper:
         :param url: url of the link to check
         :return: check if link exists
         """
-        if sleep_seconds == None:
+        if sleep_seconds is None:
             sleep_seconds=random.randint(1, 3)
         req = RequestsWrapper()
         response = req.get(url, sleep_seconds=sleep_seconds)
@@ -228,7 +250,7 @@ class ZenScraper:
         :param url: url to get json
         :return: json file
         """
-        if sleep_seconds == None:
+        if sleep_seconds is None:
             sleep_seconds=random.randint(1, 3)
         req = RequestsWrapper()
         res = req.get(url, sleep_seconds=sleep_seconds)
@@ -258,6 +280,7 @@ class ZenElement:
 
         except (IndexError, lxml.etree.XPathEvalError, lxml.etree.XPathError,
                 lxml.etree.Error) as err:
+            logger.error(err_message)
             logger.error(err)
             return None
 
@@ -267,6 +290,7 @@ class ZenElement:
             logger.info(f'{ZenElement(self.element.xpath(xpath)[0]).get_tag()} element found') # pylint: disable=logging-fstring-interpolation
             return ZenElement(self.element.xpath(xpath)[0])
         except (lxml.etree.XPathEvalError, lxml.etree.XPathError, lxml.etree.Error) as err:
+            logger.error(err_message)
             logger.error(err)
             return None
 
@@ -485,13 +509,14 @@ class UtilFunctions:
         sold_items = requests.get(url)
         Path(f'{jsondir}/{file_name}.json').write_bytes(sold_items.content)
 
-    def is_partial_run(self, parser):
+    @staticmethod
+    def is_partial_run(parser):
         """ Create a Partial run based on an argument """
         return parser.parse_args().run
 
-    def end_partial_run(self, fetch, header):
+    @staticmethod
+    def end_partial_run(fetch, header=None): #pylint: disable=unused-argument
         """ End Partial Run based on an argument """
-        length = len(header)
         fetch_arr = fetch
         fetch_arr.append(['#----------------------End of Partial Run---------------------#'])
         return fetch_arr
