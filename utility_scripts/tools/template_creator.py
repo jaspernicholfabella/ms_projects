@@ -44,10 +44,10 @@ def create_files(input_dict):
 
 if __name__ == '__main__':
     input_dict = {
-        'name': 'br_ecomsite',
-        'description': 'BR eCommerce Sites',
-        'python_file': 'ecomsite.py',
-        'output_dir': 'br_ecomsite',
+        'name': 'tools',
+        'description': 'Tools',
+        'python_file': 'object_key_adder.py',
+        'output_dir': 'tools',
         # 'date_to_run': 'run_calendar: 5thDayOfEveryQuarter',
         'date_to_run': 'days_of_week: tue',
         'qa_start_time': '11:00',
