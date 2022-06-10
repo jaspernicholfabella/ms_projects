@@ -52,6 +52,7 @@ class Redfin(Runner):
             self.search_for = val
 
             self.state_code, county_code = self.get_county_code(state_name)
+
             with SW.get_driver() as driver:
                 if county_code != '':
                     self.out.objectkey = self.out.compute_key()
@@ -85,7 +86,13 @@ class Redfin(Runner):
                 SW.get_url(driver, url, sleep_seconds=1)
             else:
                 SW.get_url(driver, self.datapoints['web_search'].format(county_code), sleep_seconds=1)
-
+            try:
+                all_homes_full = driver.find_element(By.XPATH, "//div[@class='homes summary']").get_attribute("innerText")
+                all_homes_full = all_homes_full.split('of')[1]
+                numeric_filter = filter(str.isdigit, all_homes_full)
+                all_homes_full = "".join(numeric_filter).strip()
+            except: #pylint: disable=broad-except
+                all_homes_full = ''
             driver.find_element(By.XPATH, "//span[@data-content='All filters']").click()
             time.sleep(2)
             all_homes = driver.find_element(By.XPATH,
@@ -104,6 +111,9 @@ class Redfin(Runner):
                                                      "//div[@class='applyButtonContainer']/button/span").get_attribute('innerText')
             except Exception as e:
                 print(e)
+
+            if '+' in all_homes:
+                all_homes = all_homes_full
             return all_homes, home_with_tour
         except Exception as e:
             print(e)
@@ -132,12 +142,16 @@ class Redfin(Runner):
             print(e)
         return '', ''
 
+    def save_output(self, data, **kwargs):
+        """Save final data to output file"""
+        self.save_output_csv(data, index=True)
 
     def normalize(self, raw, **kwargs):
         """Save raw data to file"""
-        data_frame = pd.DataFrame(raw, columns=self.out.header()[:-1])
+        data_frame = pd.DataFrame(raw, columns=self.out.header())
         data_frame.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"],
                    value=["", ""], regex=True, inplace=True)
+        data_frame.set_index("ObjectKey", inplace=True)
         return data_frame
 
 def main(argv):

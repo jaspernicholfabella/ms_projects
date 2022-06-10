@@ -75,7 +75,7 @@ class JILCreate():
         fp.write(f'box_terminator: 1'  + '\n')
         fp.write('machine: awpy-vm'  + '\n')
         fp.write(f'std_out_file: ${{LOGDIR}}/{self.name}/$AUTO_JOB_NAME.`/bin/date +%Y%m%d`.out'  + '\n')
-        fp.write(f'std_out_file: ${{LOGDIR}}/{self.name}/$AUTO_JOB_NAME.`/bin/date +%Y%m%d`.err'  + '\n')
+        fp.write(f'std_err_file: ${{LOGDIR}}/{self.name}/$AUTO_JOB_NAME.`/bin/date +%Y%m%d`.err'  + '\n')
         fp.write(f'profile: /ms/dist/eqr/PROJ/webdata-py/{folder}/config/{folder}/autosys.profile'  + '\n')
 
     @staticmethod

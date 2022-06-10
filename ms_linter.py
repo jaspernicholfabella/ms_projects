@@ -4,9 +4,10 @@ disable_opts = [
     '--disable=wrong-import-position',
     '--disable=attribute-defined-outside-init',
     '--disable=c-extension-no-member',
-    '--disable=no-member'
+    '--disable=no-member',
+    '--disable=unused-argument'
 ]
-# python_file = 'us_matterpoint/vsatdist.py'
-python_file = 'utility_scripts/zenscraper.py'
+python_file = 'global_applestore/applestore.py'
+# python_file = 'utility_scripts/zenscraper.py'
 pylint_opts = [*disable_opts, python_file]
 pylint.lint.Run(pylint_opts)

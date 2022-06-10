@@ -1,10 +1,10 @@
 """Zenscraper Python Library v 0.2"""
 from enum import Enum
-import os
 import shutil
 import re
-import csv
 import sys
+import json
+import time
 import random
 import logging
 from pathlib import Path
@@ -12,7 +12,6 @@ from bs4 import BeautifulSoup
 import requests
 import lxml.html
 from lxml import etree
-import pandas as pd
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 sys.path.append('../../scripts')
@@ -20,7 +19,7 @@ from pyersq.requests_wrapper import RequestsWrapper
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.WARNING)
 
 # zenscraper version 0.2b
 class ZenScraper:
@@ -88,6 +87,7 @@ class ZenScraper:
         :param url: destination url to get document body
         :return:
         """
+        logger.info('GET request on %s', url)
         if sleep_seconds is None:
             sleep_seconds=random.randint(1, 3)
         req = RequestsWrapper()
@@ -208,12 +208,14 @@ class ZenScraper:
         output_dict = self.__return_dict_values(by_mode, to_search, doc, tag)
         return self.__find_element(**output_dict)
 
-    def print_html(self):
+    def print_html(self, is_print=True):
         """
         Print the HTMl file on the console.
         :return: HTML File as a String
         """
-        print(etree.tostring(self.doc, pretty_print=True))
+        logger.info('Printing HTML')
+        if is_print:
+            print(etree.tostring(self.doc, pretty_print=True))
         return etree.tostring(self.doc, pretty_print=True)
 
     def status_code(self):
@@ -230,6 +232,7 @@ class ZenScraper:
         :param url: url of the link to check
         :return: check if link exists
         """
+        logger.info('Checking link %s', url)
         if sleep_seconds is None:
             sleep_seconds=random.randint(1, 3)
         req = RequestsWrapper()
@@ -250,11 +253,74 @@ class ZenScraper:
         :param url: url to get json
         :return: json file
         """
+        logger.info('Get JSON file from %s', url)
         if sleep_seconds is None:
             sleep_seconds=random.randint(1, 3)
         req = RequestsWrapper()
         res = req.get(url, sleep_seconds=sleep_seconds)
         return res.json()
+
+    def get_json_from_html_script_tag(self, doc=None, index=0, to_add_or_remove = None, **kwargs):
+        """
+        :param doc: response document object
+        :param index: index on the <script/> tag
+        :return: return a json dictionary
+        """
+        json_object = None
+        logger.info('getting json from html script')
+        if doc is None:
+            doc = self.doc
+
+        soup = BeautifulSoup(self.print_html(is_print=False), 'lxml')
+        res = soup.find('script', **kwargs)
+
+        try:
+            json_object = json.loads(res.contents[index])
+            return json_object
+        except Exception as err:
+            logger.error(err)
+            bad_json = res.contents[index]
+            improved_json = re.sub(r'"\s*$', '",', bad_json, flags=re.MULTILINE)
+            improved_json.replace('"\\', '')
+            improved_json.replace("\'", '"')
+            json_object = self._bruteforce_json_fix(improved_json)
+
+        return json_object
+
+    @staticmethod
+    def _bruteforce_json_fix(improved_json, retry_count=20):
+
+        def add_strings(prefix, improved_json, retry_count, prefix_to_increment='}]'):
+            for i in range(retry_count):
+                suffix = ''
+                for j in range(retry_count):
+                    try:
+                        suffix += '}'
+                        json_object = json.loads(f'{improved_json}{prefix}{suffix}')
+                        logger.warning('json bruteforce success.')
+                        return json_object
+                    except Exception:
+                        logger.info(f'fix_type #{i} adding {prefix}{suffix}: retrying {j} times.')
+                prefix += prefix_to_increment
+            return None
+
+        json_object = add_strings('"', improved_json, retry_count)
+        if json_object is not None:
+            return json_object
+
+        json_object = add_strings('', improved_json, retry_count)
+        if json_object is not None:
+            return json_object
+
+        json_object = add_strings('"', improved_json, retry_count, prefix_to_increment=']')
+        if json_object is not None:
+            return json_object
+
+        json_object = add_strings('', improved_json, retry_count, prefix_to_increment=']')
+        if json_object is not None:
+            return json_object
+
+        return None
 
 class ZenElement:
     """ ZenElement , work like selenium Element Object """
@@ -361,6 +427,7 @@ class ZenElement:
          only work on innerText attribute
         :return: string
         """
+        logger.info('Get Element Attribute %s', attribute)
         err_message = (
             "<Error: attribute in the element cannot be found, try different attribute>"
         )
@@ -370,42 +437,54 @@ class ZenElement:
             if attribute == 'innerHTML':
                 return self.__to_string()
             if self.element.attrib.get(attribute) is None:
-                return err_message
+                logging.error(err_message)
+                return None
 
             return str(self.element.attrib.get(attribute))
-        except (lxml.etree.XPathEvalError, lxml.etree.Error, lxml.etree.XPathError):
-            return err_message
+        except (lxml.etree.XPathEvalError, lxml.etree.Error, lxml.etree.XPathError) as err:
+            logging.error(err)
+            logging.error(err_message)
+            return None
 
     def get_tag(self):
         """
         get the current tag of the element
         :return:
         """
+        logger.info('Get Element Tag')
         err_message = "<Error: There is no Text inside the Element>"
         try:
             if self.element is None:
-                return err_message
+                logging.error(err_message)
+                return None
 
             string = str(self.element).split("Element")[1].strip()
             string = string.split("at")[0].strip()
             return string
-        except (lxml.etree.XPathEvalError, lxml.etree.Error, lxml.etree.XPathError):
-            return "<Error: There is no Text inside the Element!>"
+        except (lxml.etree.XPathEvalError, lxml.etree.Error, lxml.etree.XPathError) as err:
+            logging.error(err)
+            logging.error(err_message)
+            return None
 
     def get_text(self):
         """ get text inside the element , use get_attribute('innerText')
          if you want all the text inside the element """
+        logger.info('Get text from element')
         err_message = "<Error: There is no text inside this Element>"
         try:
             if self.element.text is None:
-                return err_message
+                logging.error(err_message)
+                return None
 
             return self.element.text
-        except (lxml.etree.XPathEvalError, lxml.etree.Error, lxml.etree.XPathError):
-            return err_message
+        except (lxml.etree.XPathEvalError, lxml.etree.Error, lxml.etree.XPathError) as err:
+            logging.error(err)
+            logging.error(err_message)
+            return None
 
     def get_parent(self):
         """get the parent element of the current element"""
+        logger.info('Getting Element Parent')
         return ZenElement(self.element.xpath("./parent::node()")[0])
 
     def get_children(self, tagname="*"):
@@ -415,6 +494,7 @@ class ZenElement:
          e.g. if you want to search a tag, just input a
         :return: List of ZenElement Object
         """
+        logger.info('Getting Element Children')
         return self.__find_elements_list(
             err_message="<Error: No Children Inside the element>",
             xpath=f"./children::{tagname}",
@@ -470,12 +550,19 @@ class UtilFunctions:
     @staticmethod
     def strip_html(data):
         """ strip html tags from the string. """
+        logger.info('stripping HTML tags from string')
         string = re.compile(r"<.*?>|=")
         return string.sub("", data)
 
     @staticmethod
+    def remove_non_digits(seq):
+        seq_type = type(seq)
+        return seq_type().join(filter(seq_type.isdigit, seq))
+
+    @staticmethod
     def create_directory(dir_name):
         """ Create a directory """
+        logger.info('Creating Directory')
         Path(dir_name).mkdir(parents=True, exist_ok=True)
 
     def save_html(self, url='', htmldir='', filename='', driver=None):
@@ -487,6 +574,7 @@ class UtilFunctions:
         that we will download the page from selenium, url not needed
         :return:
         """
+        logger.info('saving HTML files')
         self.create_directory(htmldir)
 
         if driver:
@@ -512,11 +600,13 @@ class UtilFunctions:
     @staticmethod
     def is_partial_run(parser):
         """ Create a Partial run based on an argument """
+        logger.info('Executing Code on Partial Run')
         return parser.parse_args().run
 
     @staticmethod
     def end_partial_run(fetch, header=None): #pylint: disable=unused-argument
         """ End Partial Run based on an argument """
+        logger.info('Ending Partial Run')
         fetch_arr = fetch
         fetch_arr.append(['#----------------------End of Partial Run---------------------#'])
         return fetch_arr

@@ -34,24 +34,25 @@ def create_files(input_dict):
     replace_text(python_file, '@@@description@@@', input_dict['description'])
     replace_text(python_file, '@@@class_name@@@', input_dict['python_file'].replace('.py', '').title())
     replace_text(python_file, '@@@python_file@@@',input_dict['python_file'].replace('.py', ''))
-    test_file = f"{input_dict['name']}/test_{input_dict['python_file']}"
-    shutil.copy('test_template.base', test_file)
-    replace_text(test_file, '@@@class_name@@@', input_dict['python_file'].replace('.py', '').title())
-    replace_text(test_file, '@@@dir_name@@@', input_dict['name'])
-    replace_text(test_file, '@@@file_name@@@', input_dict['python_file'].replace('.py', ''))
-    replace_text(test_file, '@@@python_file@@@', input_dict['python_file'])
-
+    # test_file = f"{input_dict['name']}/test_{input_dict['python_file']}"
+    # shutil.copy('test_template.base', test_file)
+    # replace_text(test_file, '@@@class_name@@@', input_dict['python_file'].replace('.py', '').title())
+    # replace_text(test_file, '@@@dir_name@@@', input_dict['name'])
+    # replace_text(test_file, '@@@file_name@@@', input_dict['python_file'].replace('.py', ''))
+    # replace_text(test_file, '@@@python_file@@@', input_dict['python_file'])
+    # jil = JILCreate(**input_dict)
+    # jil.generate_jil()
 
 if __name__ == '__main__':
     input_dict = {
-        'name': 'tools',
-        'description': 'Tools',
-        'python_file': 'object_key_adder.py',
-        'output_dir': 'tools',
+        'name': 'us_ferc',
+        'description': 'XBRL Data Extractor',
+        'python_file': 'xbrl_scraper.py',
+        'output_dir': 'us_ferc/',
         # 'date_to_run': 'run_calendar: 5thDayOfEveryQuarter',
-        'date_to_run': 'days_of_week: tue',
-        'qa_start_time': '11:00',
-        'prod_start_time': '12:00'
+        'date_to_run': 'days_of_week: all',
+        'qa_start_time': '1:00',
+        'prod_start_time': '1:30'
     }
 
     create_files(input_dict)

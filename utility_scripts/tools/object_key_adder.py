@@ -18,7 +18,7 @@ from bs4 import BeautifulSoup
 from lxml import etree
 from pprint import pprint
 
-sys.path.append('../../scripts')
+sys.path.append('../../../scripts')
 from pyersq.web_runner import Runner
 from pyersq.row import Row
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
