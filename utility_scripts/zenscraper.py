@@ -304,22 +304,12 @@ class ZenScraper:
                 prefix += prefix_to_increment
             return None
 
-        json_object = add_strings('"', improved_json, retry_count)
-        if json_object is not None:
-            return json_object
-
-        json_object = add_strings('', improved_json, retry_count)
-        if json_object is not None:
-            return json_object
-
-        json_object = add_strings('"', improved_json, retry_count, prefix_to_increment=']')
-        if json_object is not None:
-            return json_object
-
-        json_object = add_strings('', improved_json, retry_count, prefix_to_increment=']')
-        if json_object is not None:
-            return json_object
-
+        for prefix_to_increment in ['}]', ']']:
+            for prefix in ['', '"', '"}']:
+                json_object = add_strings(prefix, improved_json, retry_count,
+                                          prefix_to_increment=prefix_to_increment)
+                if json_object is not None:
+                    return json_object
         return None
 
 class ZenElement:

@@ -46,10 +46,10 @@ class Applelstore(Runner):
         """ Get raw data from source"""
         scraper = ZenScraper()
         scraper.get(self.datapoints['base_url'])
-        self.get_locale(scraper)
-        # scraper.get('https://www.apple.com/jp/retail/shinsaibashi/')
-        # individual_store_json = scraper.get_json_from_html_script_tag(id='__NEXT_DATA__')
-        # print(individual_store_json)
+        # self.get_locale(scraper)
+        scraper.get('https://www.apple.com/retail/fifthavenue/')
+        individual_store_json = scraper.get_json_from_html_script_tag(id='__NEXT_DATA__')
+        print(individual_store_json)
 
         return self.fetch_out
 
@@ -141,6 +141,8 @@ class Applelstore(Runner):
                     local_days['formattedDayDateA11y']
                 )
             )
+            if len(str(formatted_day)) != len(str(datetime.now().day)):
+                formatted_day = formatted_day[1:]
 
             cur_day = int(formatted_day)
             temp_year = datetime.now().year
@@ -164,10 +166,7 @@ class Applelstore(Runner):
         return clean
 
 
-
-
     def __util_url_from_slug(self, locale, root_path, slug):
-
         if locale == 'zh_CN':
             url = 'https://www.apple.com.cn/retail/' + slug + '/'
         else:
@@ -187,7 +186,6 @@ class Applelstore(Runner):
         return data_frame
 
     def cleanup(self):
-
         for data in set(self.failed_fetch):
             print(data)
 

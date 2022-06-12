@@ -58,7 +58,7 @@ class Ecomsite(Runner):
                         )
                     )
 
-                    time.sleep(5)
+                    time.sleep(8)
                     if not self.is_header_added:
                         table_header = ZenScraper().get_html_table(driver=driver, just_header=True, id='theTable')
                         for header in table_header:

@@ -69,13 +69,3 @@ def main(argv):
 
 if __name__ == "__main__":
     main(sys.argv)
-
-run()
-
-if __name__ == "__main__":
-    main(sys.argv)
-
-sys.argv)
-
-gv)
-
