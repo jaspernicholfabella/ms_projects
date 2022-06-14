@@ -92,7 +92,7 @@ class Redfin(Runner):
             self.wait_for_page_load(driver, wait_time=700)
 
             try:
-                self.wait_for_element(driver, "//div[@class='homes summary']", wait_time=30)
+                self.wait_for_element(driver, "//div[@class='homes summary']", wait_time=100)
                 all_homes_full = driver.find_element(By.XPATH, "//div[@class='homes summary']").get_attribute("innerText")
                 all_homes_full = all_homes_full.split('of')[1]
                 numeric_filter = filter(str.isdigit, all_homes_full)
@@ -105,7 +105,7 @@ class Redfin(Runner):
                                             "//div[@class='applyButtonContainer']/button/span").get_attribute('innerText')
             try:
                 action = ActionChains(driver)
-                self.wait_for_element(driver, "//span[contains(text(), 'Walk Score')]", wait_time=30)
+                self.wait_for_element(driver, "//span[contains(text(), 'Walk Score')]", wait_time=100)
                 walk_score = driver.find_element(By.XPATH, "//span[contains(text(), 'Walk Score')]")
                 open_house_el = driver.find_element(By.XPATH,
                                                     "//span[contains(text(), 'Open House & Tour')]")
@@ -114,8 +114,7 @@ class Redfin(Runner):
                 time.sleep(3)
                 driver.find_element(By.XPATH, "//input[@name='virtualTour']").click()
                 time.sleep(5)
-                home_with_tour = driver.find_element(By.XPATH,
-                                                     "//div[@class='applyButtonContainer']/button/span").get_attribute('innerText')
+                home_with_tour = driver.find_element(By.XPATH, "//div[@class='applyButtonContainer']/button/span").get_attribute('innerText')
             except Exception as e:
                 print(e)
 
