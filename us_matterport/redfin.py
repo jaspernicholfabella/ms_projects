@@ -8,6 +8,8 @@ from datetime import datetime
 import pandas as pd
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
@@ -86,7 +88,11 @@ class Redfin(Runner):
                 SW.get_url(driver, url, sleep_seconds=1)
             else:
                 SW.get_url(driver, self.datapoints['web_search'].format(county_code), sleep_seconds=1)
+
+            self.wait_for_page_load(driver, wait_time=300)
+
             try:
+                self.wait_for_element(driver, wait_time=30, xpath="//div[@class='homes summary']")
                 all_homes_full = driver.find_element(By.XPATH, "//div[@class='homes summary']").get_attribute("innerText")
                 all_homes_full = all_homes_full.split('of')[1]
                 numeric_filter = filter(str.isdigit, all_homes_full)
@@ -99,6 +105,7 @@ class Redfin(Runner):
                                             "//div[@class='applyButtonContainer']/button/span").get_attribute('innerText')
             try:
                 action = ActionChains(driver)
+                self.wait_for_element(driver, wait_time=30, xpath="//span[contains(text(), 'Walk Score')]")
                 walk_score = driver.find_element(By.XPATH, "//span[contains(text(), 'Walk Score')]")
                 open_house_el = driver.find_element(By.XPATH,
                                                     "//span[contains(text(), 'Open House & Tour')]")
@@ -119,6 +126,28 @@ class Redfin(Runner):
             print(e)
             return all_homes, home_with_tour
 
+
+    def wait_for_page_load(self, driver, wait_time):
+        while not self._page_is_loading(driver, wait_time=wait_time):
+            continue
+
+    @staticmethod
+    def wait_for_element(driver, wait_time, xpath):
+        try:
+            WebDriverWait(driver, wait_time).until(EC.presence_of_element_located((By.XPATH, xpath)))
+        except Exception as e:
+            print(e)
+
+    @staticmethod
+    def _page_is_loading(driver, wait_time=30):
+        for _ in wait_time:
+            x = driver.execute_script("return document.readyState")
+            if x == "complete":
+                return True
+            else:
+                time.sleep(1)
+                yield False
+        return True
 
     def get_county_code(self, state_name):
         try:

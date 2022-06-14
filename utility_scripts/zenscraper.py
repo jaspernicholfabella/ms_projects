@@ -283,13 +283,11 @@ class ZenScraper:
             improved_json = re.sub(r'"\s*$', '",', bad_json, flags=re.MULTILINE)
             improved_json.replace('"\\', '')
             improved_json.replace("\'", '"')
-            json_object = self._bruteforce_json_fix(improved_json)
-
+            json_object = self.__bruteforce_json_fix(improved_json)
         return json_object
 
     @staticmethod
-    def _bruteforce_json_fix(improved_json, retry_count=20):
-
+    def __bruteforce_json_fix(improved_json, retry_count=20):
         def add_strings(prefix, improved_json, retry_count, prefix_to_increment='}]'):
             for i in range(retry_count):
                 suffix = ''
