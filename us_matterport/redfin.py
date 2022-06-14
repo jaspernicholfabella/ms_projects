@@ -89,10 +89,10 @@ class Redfin(Runner):
             else:
                 SW.get_url(driver, self.datapoints['web_search'].format(county_code), sleep_seconds=1)
 
-            self.wait_for_page_load(driver, 300)
+            self.wait_for_page_load(driver, wait_time=700)
 
             try:
-                self.wait_for_element(driver, wait_time=30, xpath="//div[@class='homes summary']")
+                self.wait_for_element(driver, "//div[@class='homes summary']", wait_time=30)
                 all_homes_full = driver.find_element(By.XPATH, "//div[@class='homes summary']").get_attribute("innerText")
                 all_homes_full = all_homes_full.split('of')[1]
                 numeric_filter = filter(str.isdigit, all_homes_full)
@@ -105,7 +105,7 @@ class Redfin(Runner):
                                             "//div[@class='applyButtonContainer']/button/span").get_attribute('innerText')
             try:
                 action = ActionChains(driver)
-                self.wait_for_element(driver, wait_time=30, xpath="//span[contains(text(), 'Walk Score')]")
+                self.wait_for_element(driver, "//span[contains(text(), 'Walk Score')]", wait_time=30)
                 walk_score = driver.find_element(By.XPATH, "//span[contains(text(), 'Walk Score')]")
                 open_house_el = driver.find_element(By.XPATH,
                                                     "//span[contains(text(), 'Open House & Tour')]")
@@ -127,12 +127,18 @@ class Redfin(Runner):
             return all_homes, home_with_tour
 
 
-    def wait_for_page_load(self, driver, wait_time):
+    def wait_for_page_load(self, driver, wait_time=30):
         while not self._page_is_loading(driver, wait_time=wait_time):
             continue
 
     @staticmethod
-    def wait_for_element(driver, wait_time, xpath):
+    def wait_for_element(driver, xpath, wait_time=30):
+        """
+        :param driver: Selenium webdriver
+        :param wait_time: wait time in seconds
+        :param xpath: xpath expression to wait
+        :return:
+        """
         try:
             WebDriverWait(driver, wait_time).until(EC.presence_of_element_located((By.XPATH, xpath)))
         except Exception as e:
@@ -145,8 +151,8 @@ class Redfin(Runner):
             if x == "complete":
                 return True
             else:
-                time.sleep(1)
-                # yield False
+                time.sleep(0.5)
+                yield False
         return True
 
     def get_county_code(self, state_name):
