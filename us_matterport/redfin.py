@@ -89,7 +89,7 @@ class Redfin(Runner):
             else:
                 SW.get_url(driver, self.datapoints['web_search'].format(county_code), sleep_seconds=1)
 
-            self.wait_for_page_load(driver, wait_time=300)
+            self.wait_for_page_load(driver, 300)
 
             try:
                 self.wait_for_element(driver, wait_time=30, xpath="//div[@class='homes summary']")
@@ -146,7 +146,7 @@ class Redfin(Runner):
                 return True
             else:
                 time.sleep(1)
-                yield False
+                # yield False
         return True
 
     def get_county_code(self, state_name):
