@@ -17,7 +17,7 @@ from pyersq.row import Row
 import pyersq.utils as squ
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
 
-from ms_projects.utility_scripts.zenscraper import ZenScraper, DataObject, UtilFunctions
+from ms_projects.utility_scripts.zenscraper_0_3 import ZenScraper
 
 class Redfin(Runner):
     """Collect data from website"""
@@ -35,6 +35,7 @@ class Redfin(Runner):
         self.fetch_date = datetime.now().strftime('%m/%d/%Y')
         self.search_for = ''
         self.state_code = ''
+        self.zs = ZenScraper()
 
     def get_raw(self, **kwargs):
         """ Get raw data from source"""
@@ -45,9 +46,9 @@ class Redfin(Runner):
 
         for count,val in enumerate(county_name_list):
 
-            if UtilFunctions().is_partial_run(self.parser):
+            if self.zs.utils.parse.is_partial_run(self.parser):
                 if count > 2:
-                    self.fetch_out = UtilFunctions().end_partial_run(self.fetch_out, self.out.header())
+                    self.fetch_out = self.zs.utils.parse.end_partial_run(self.fetch_out, self.out.header())
                     break
 
             state_name = state_name_list[count]
@@ -89,7 +90,7 @@ class Redfin(Runner):
             else:
                 SW.get_url(driver, self.datapoints['web_search'].format(county_code), sleep_seconds=1)
 
-            self.wait_for_page_load(driver, wait_time=700)
+            self.zs.selenium_utils.wait_for_page_load(driver, wait_time=700)
 
             try:
                 self.wait_for_element(driver, "//div[@class='homes summary']", wait_time=100)

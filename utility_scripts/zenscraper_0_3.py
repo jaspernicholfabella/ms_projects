@@ -7,6 +7,8 @@ import json
 import time
 import random
 import logging
+import glob
+import os
 from pathlib import Path
 from bs4 import BeautifulSoup
 import requests
@@ -29,15 +31,17 @@ class ZenScraper:
     doc = None
     response = None
     utils = None
-    datastreams = None
-    web = None
+    selenium_utils = None
+    datastream = None
+    logger = None
 
     def __init__(self):
         self.utils = _UtilFunctions()
+        self.selenium_utils = _SeleniumUtils()
         self.datastream = _Data_Stream()
-        self.web = _Web()
+        self.logger = logger
 
-    def __find_elements_list(self, err_message="", xpath="", doc=None):
+    def _find_elements_list(self, err_message="", xpath="", doc=None):
         """ find multiple elements in the class """
         try:
             element_list = []
@@ -57,7 +61,7 @@ class ZenScraper:
             logger.error(f'{err}')  # pylint: disable=logging-fstring-interpolation
             return None
 
-    def __find_element(self, err_message="", xpath="", doc=None):
+    def _find_element(self, err_message="", xpath="", doc=None):
         """ find single element from the class """
         try:
             if doc is None:
@@ -73,7 +77,7 @@ class ZenScraper:
             return None
 
     @staticmethod
-    def __return_dict_values(by_mode, to_search, doc=None, tag="node()"):
+    def _return_dict_values(by_mode, to_search, doc=None, tag="node()"):
         output_dict = {
             1: {'err_message': "<Error: id cannot be found on the html>",
                 'xpath': f'//node()[@id="{to_search}"]',
@@ -115,8 +119,8 @@ class ZenScraper:
         :param tag: works best with LINK_TEXT, PARTIAL_LINK_TEXT
         :return: ZenElement Object
         """
-        output_dict = self.__return_dict_values(by_mode, to_search, doc, tag)
-        return self.__find_elements_list(**output_dict)
+        output_dict = self._return_dict_values(by_mode, to_search, doc, tag)
+        return self._find_elements_list(**output_dict)
 
     def find_element(self, by_mode, to_search, doc=None, tag="node()"):
         """
@@ -126,8 +130,8 @@ class ZenScraper:
         :param tag: works best with LINK_TEXT, PARTIAL_LINK_TEXT
         :return: ZenElement Object
         """
-        output_dict = self.__return_dict_values(by_mode, to_search, doc, tag)
-        return self.__find_element(**output_dict)
+        output_dict = self._return_dict_values(by_mode, to_search, doc, tag)
+        return self._find_element(**output_dict)
 
     def status_code(self):
         """
@@ -152,7 +156,7 @@ class ZenElement:
         """ Init ZenElement """
         self.element = element
 
-    def __find_elements_list(self, err_message="", xpath=""):
+    def _find_elements_list(self, err_message="", xpath=""):
         """ Find Elements """
         try:
             element_list = []
@@ -172,7 +176,7 @@ class ZenElement:
             logger.error(err)
             return None
 
-    def __find_element(self, err_message="", xpath=""):
+    def _find_element(self, err_message="", xpath=""):
         """ Find ELement"""
         try:
             logger.info(
@@ -184,7 +188,7 @@ class ZenElement:
             return None
 
     @staticmethod
-    def __return_dict_values(by_mode, to_search, tag="node()"):
+    def _return_dict_values(by_mode, to_search, tag="node()"):
         output_dict = {
             1: {'err_message': "<Error: id cannot be found on the html>",
                 'xpath': f'//node()[@id="{to_search}"]'},
@@ -199,13 +203,13 @@ class ZenElement:
         }
         return output_dict[by_mode.value]
 
-    def __inner_text(self, inner_text_filter=None):
+    def _inner_text(self, inner_text_filter=None):
         """
         :param inner_text_filter: you can add an array if you want
         ot add additional filter for your inner_text
         :return: filtered string
         """
-        element_str = self.__to_string()
+        element_str = self._to_string()
         stripped = _UtilFunctions().strings.strip_html(element_str)
         if inner_text_filter:
             for rep in inner_text_filter:
@@ -213,7 +217,7 @@ class ZenElement:
         stripped = stripped.strip()
         return stripped
 
-    def __to_string(self):
+    def _to_string(self):
         """
         Get the innerHTML of an Element, and convert it to string
         :return: string
@@ -229,8 +233,8 @@ class ZenElement:
         :param tag: parent element tag , default node(), means all element
         :return: List of ZenElement Objects
         """
-        output_dict = self.__return_dict_values(by_mode, to_search, tag)
-        return self.__find_elements_list(**output_dict)
+        output_dict = self._return_dict_values(by_mode, to_search, tag)
+        return self._find_elements_list(**output_dict)
 
     def find_element(self, by_mode, to_search, tag="node()"):
         """
@@ -239,8 +243,8 @@ class ZenElement:
         :param tag: parent element tag , default node(), means all element
         :return: ZenElement Object
         """
-        output_dict = self.__return_dict_values(by_mode, to_search, tag)
-        return self.__find_element(**output_dict)
+        output_dict = self._return_dict_values(by_mode, to_search, tag)
+        return self._find_element(**output_dict)
 
     def get_attribute(self, attribute="", inner_text_filter=None):
         """
@@ -256,9 +260,9 @@ class ZenElement:
         )
         try:
             if attribute == 'innerText':
-                return self.__inner_text(inner_text_filter)
+                return self._inner_text(inner_text_filter)
             if attribute == 'innerHTML':
-                return self.__to_string()
+                return self._to_string()
             if self.element.attrib.get(attribute) is None:
                 logging.error(err_message)
                 return None
@@ -318,7 +322,7 @@ class ZenElement:
         :return: List of ZenElement Object
         """
         logger.info('Getting Element Children')
-        return self.__find_elements_list(
+        return self._find_elements_list(
             err_message="<Error: No Children Inside the element>",
             xpath=f"./children::{tagname}",
         )
@@ -334,31 +338,25 @@ class By(Enum):
     CLASS_NAME = 7
     CSS_SELECTOR = 8
 
-
 class _UtilFunctions:
     """ Utility Functions mostly used in Scraping """
     strings = None
     files = None
+    html = None
+    json = None
+    parse = None
 
     def __init__(self):
         self.strings = _UtilFunctions_Strings()
         self.files = _UtilFunctions_Files()
+        self.html = _UtilFunctions_HTML()
+        self.json = _UtilFunctions_JSON()
+        self.parse = _UtilFunctions_Parse()
 
-    @staticmethod
-    def is_partial_run(parser):
-        """ Create a Partial run based on an argument """
-        logger.info('Executing Code on Partial Run')
-        return parser.parse_args().run
 
-    @staticmethod
-    def end_partial_run(fetch, header=None):  # pylint: disable=unused-argument
-        """ End Partial Run based on an argument """
-        logger.info('Ending Partial Run')
-        fetch_arr = fetch
-        fetch_arr.append(['#----------------------End of Partial Run---------------------#'])
-        return fetch_arr
 
 class _UtilFunctions_Strings:
+
     @staticmethod
     def strip_html(data):
         """ strip html tags from the string. """
@@ -367,9 +365,56 @@ class _UtilFunctions_Strings:
         return string.sub("", data)
 
     @staticmethod
-    def remove_non_digits(seq):
-        seq_type = type(seq)
-        return seq_type().join(filter(seq_type.isdigit, seq))
+    def remove_non_digits(input):
+        output = ''.join(c for c in input if c.isdigit())
+        return output
+
+    @staticmethod
+    def remove_digits(input):
+        output = ''.join(c for c in input if not c.isdigit())
+        return output
+
+    @staticmethod
+    def remove_non_alphachar(input):
+        input = input.lower()
+        output = ''
+        letter = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
+                  'q', 'r', 's', 't', 'u',
+                  'v', 'w', 'x', 'y', 'z']
+        for char in input:
+            if any(x == char for x in letter):
+                output += char
+        return output
+
+    @staticmethod
+    def is_month(month):
+        if any(x == month.lower() for x in
+               ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov',
+                'dec']):
+            return True
+        else:
+            return False
+
+    @staticmethod
+    def spanish_months(month):
+        spanish_months_dict = {
+            'enero': 'jan', 'febrero': 'feb', 'marzo': 'mar',
+            'abril': 'apr', 'mayo': 'may', 'junio': 'jun',
+            'julio': 'jul', 'agosto': 'aug', 'septiembre': 'sep',
+            'octubre': 'oct', 'noviembre': 'nov', 'diciembre': 'dec'
+        }
+        return spanish_months_dict[month.lower().strip()]
+
+    @staticmethod
+    def quarter1_to_month(month):
+        """get quarter based on a month data"""
+        quarter_dict = {
+            'q1': 'mar',
+            'q2': 'jun',
+            'q3': 'sep',
+            'q4': 'dec'
+        }
+        return quarter_dict[month.lower().strip()]
 
 class _UtilFunctions_Files:
     @staticmethod
@@ -377,38 +422,6 @@ class _UtilFunctions_Files:
         """ Create a directory """
         logger.info('Creating Directory')
         Path(dir_name).mkdir(parents=True, exist_ok=True)
-
-    def save_html(self, url='', htmldir='', filename='', driver=None):
-        """
-        :param url: url of the html page you want to save
-        :param htmldir: directory on where to save the html
-        :param filename: the filename on the saved directory
-        :param driver: this is for selenium, if driver is stated that means
-        that we will download the page from selenium, url not needed
-        :return:
-        """
-        logger.info('saving HTML files')
-        self.create_directory(htmldir)
-
-        if driver:
-            with open(f'{htmldir}/{filename}.html', 'w', encoding='utf-8') as file:
-                file.write(driver.page_source)
-        else:
-            req = RequestsWrapper()
-            res = req.get(url)
-            with open(f'{htmldir}/{filename}.html', 'w', encoding='utf-8') as file:
-                file.write(res.text)
-
-    def save_json(self, url='', jsondir='', file_name='data.json'):
-        """
-        :param url: url of the html page you want to save
-        :param jsondir: directory on where to save the json
-        :param file_name: the filename on the saved directory
-        :return:
-        """
-        self.create_directory(jsondir)
-        sold_items = requests.get(url)
-        Path(f'{jsondir}/{file_name}.json').write_bytes(sold_items.content)
 
     def download_file(self, url, destination_path=""):
         """
@@ -432,10 +445,119 @@ class _UtilFunctions_Files:
 
         logger.error('error on file download')
 
-class _Web:
     @staticmethod
-    def get_html_table(driver=None, table_index=0, just_header=False, with_header=False,
-                       **kwargs):  # pylint: disable=too-many-locals,too-many-branches
+    def get_file_list(file_dir='.', file_extension='txt',  is_latest_only=False):
+        try:
+            list_of_files = glob.glob(
+                f'{file_dir}/*.{file_extension}')  # * means all if need specific format then *.csv
+            if is_latest_only:
+                return max(list_of_files, key=os.path.getctime)
+        except ValueError:
+            logger.error('No %s files found', file_extension)
+            return []
+        return list_of_files
+
+class _UtilFunctions_JSON:
+
+    def save_json(self, url='', jsondir='', file_name='data.json'):
+        """
+        :param url: url of the html page you want to save
+        :param jsondir: directory on where to save the json
+        :param file_name: the filename on the saved directory
+        :return:
+        """
+        _UtilFunctions().files.create_directory(jsondir)
+        sold_items = requests.get(url)
+        Path(f'{jsondir}/{file_name}.json').write_bytes(sold_items.content)
+
+    @staticmethod
+    def get_json(url, sleep_seconds=None):
+        """
+        :param url: url to get json
+        :return: json file
+        """
+        logger.info('Get JSON file from %s', url)
+        if sleep_seconds is None:
+            sleep_seconds = random.randint(1, 3)
+        req = RequestsWrapper()
+        res = req.get(url, sleep_seconds=sleep_seconds)
+        return res.json()
+
+    def get_json_from_html_script_tag(self, doc=None, index=0, to_add_or_remove=None, **kwargs):
+        """
+        :param doc: response document object
+        :param index: index on the <script/> tag
+        :return: return a json dictionary
+        """
+        json_object = None
+        logger.info('getting json from html script')
+        if doc is None:
+            doc = self.doc
+
+        soup = BeautifulSoup(self.print_html(is_print=False), 'lxml')
+        res = soup.find('script', **kwargs)
+
+        try:
+            json_object = json.loads(res.contents[index])
+            return json_object
+        except Exception as err:
+            logger.error(err)
+            bad_json = res.contents[index]
+            improved_json = re.sub(r'"\s*$', '",', bad_json, flags=re.MULTILINE)
+            improved_json.replace('"\\', '')
+            improved_json.replace("\'", '"')
+            json_object = self._bruteforce_json_fix(improved_json)
+        return json_object
+
+    @staticmethod
+    def _bruteforce_json_fix(improved_json, retry_count=20):
+        def add_strings(prefix, improved_json, retry_count, prefix_to_increment='}]'):
+            for i in range(retry_count):
+                suffix = ''
+                for j in range(retry_count):
+                    try:
+                        suffix += '}'
+                        json_object = json.loads(f'{improved_json}{prefix}{suffix}')
+                        logger.warning('json bruteforce success.')
+                        return json_object
+                    except Exception:
+                        logger.info(f'fix_type #{i} adding {prefix}{suffix}: retrying {j} times.')
+                prefix += prefix_to_increment
+            return None
+
+        for prefix_to_increment in ['}]', ']']:
+            for prefix in ['', '"', '"}']:
+                json_object = add_strings(prefix, improved_json, retry_count,
+                                          prefix_to_increment=prefix_to_increment)
+                if json_object is not None:
+                    return json_object
+        return None
+
+class _UtilFunctions_HTML:
+
+    def save_html(self, url='', htmldir='', filename='', driver=None):
+        """
+        :param url: url of the html page you want to save
+        :param htmldir: directory on where to save the html
+        :param filename: the filename on the saved directory
+        :param driver: this is for selenium, if driver is stated that means
+        that we will download the page from selenium, url not needed
+        :return:
+        """
+        logger.info('saving HTML files')
+        _UtilFunctions().files.create_directory(htmldir)
+
+        if driver:
+            with open(f'{htmldir}/{filename}.html', 'w', encoding='utf-8') as file:
+                file.write(driver.page_source)
+        else:
+            req = RequestsWrapper()
+            res = req.get(url)
+            with open(f'{htmldir}/{filename}.html', 'w', encoding='utf-8') as file:
+                file.write(res.text)
+
+    @staticmethod
+    def get_html_table(driver=None, table_index=0, just_header=False, with_header=False, **kwargs):  # pylint: disable=too-many-locals,too-many-branches
         """
         Getting HTMl Table from <table> tag inside an html
         :param driver: selenium driver to scrape table data
@@ -525,68 +647,20 @@ class _Web:
             print(etree.tostring(self.doc, pretty_print=True))
         return etree.tostring(self.doc, pretty_print=True)
 
+class _UtilFunctions_Parse:
     @staticmethod
-    def get_json(url, sleep_seconds=None):
-        """
-        :param url: url to get json
-        :return: json file
-        """
-        logger.info('Get JSON file from %s', url)
-        if sleep_seconds is None:
-            sleep_seconds = random.randint(1, 3)
-        req = RequestsWrapper()
-        res = req.get(url, sleep_seconds=sleep_seconds)
-        return res.json()
-
-    def get_json_from_html_script_tag(self, doc=None, index=0, to_add_or_remove=None, **kwargs):
-        """
-        :param doc: response document object
-        :param index: index on the <script/> tag
-        :return: return a json dictionary
-        """
-        json_object = None
-        logger.info('getting json from html script')
-        if doc is None:
-            doc = self.doc
-
-        soup = BeautifulSoup(self.print_html(is_print=False), 'lxml')
-        res = soup.find('script', **kwargs)
-
-        try:
-            json_object = json.loads(res.contents[index])
-            return json_object
-        except Exception as err:
-            logger.error(err)
-            bad_json = res.contents[index]
-            improved_json = re.sub(r'"\s*$', '",', bad_json, flags=re.MULTILINE)
-            improved_json.replace('"\\', '')
-            improved_json.replace("\'", '"')
-            json_object = self._bruteforce_json_fix(improved_json)
-        return json_object
+    def is_partial_run(parser):
+        """ Create a Partial run based on an argument """
+        logger.info('Executing Code on Partial Run')
+        return parser.parse_args().run
 
     @staticmethod
-    def _bruteforce_json_fix(improved_json, retry_count=20):
-        def add_strings(prefix, improved_json, retry_count, prefix_to_increment='}]'):
-            for i in range(retry_count):
-                suffix = ''
-                for j in range(retry_count):
-                    try:
-                        suffix += '}'
-                        json_object = json.loads(f'{improved_json}{prefix}{suffix}')
-                        logger.warning('json bruteforce success.')
-                        return json_object
-                    except Exception:
-                        logger.info(f'fix_type #{i} adding {prefix}{suffix}: retrying {j} times.')
-                prefix += prefix_to_increment
-            return None
-
-        for prefix_to_increment in ['}]', ']']:
-            for prefix in ['', '"', '"}']:
-                json_object = add_strings(prefix, improved_json, retry_count,
-                                          prefix_to_increment=prefix_to_increment)
-                if json_object is not None:
-                    return json_object
-        return None
+    def end_partial_run(fetch, header=None):  # pylint: disable=unused-argument
+        """ End Partial Run based on an argument """
+        logger.info('Ending Partial Run')
+        fetch_arr = fetch
+        fetch_arr.append(['#----------------------End of Partial Run---------------------#'])
+        return fetch_arr
 
 class _Data_Stream:
 
@@ -623,3 +697,44 @@ class _Data_Stream:
         def attr_2():
             """Adding this for Pylint issues"""
             print("attr_2")
+
+class _SeleniumUtils:
+
+    def wait_for_page_load(self, driver, wait_time=30):
+        """
+        :param driver:
+        :param wait_time:
+        :return:
+        """
+        while not self._page_is_loading(driver, wait_time=wait_time):
+            continue
+
+    @staticmethod
+    def _page_is_loading(driver, wait_time=30):
+        """
+        :param driver:
+        :param wait_time:
+        :return:
+        """
+        for _ in wait_time:
+            x = driver.execute_script("return document.readyState")
+            if x == "complete":
+                return True
+            else:
+                time.sleep(0.5)
+                yield False
+        return True
+
+    # @staticmethod
+    # def wait_for_element(driver, xpath, wait_time=30):
+    #     """
+    #     :param driver: Selenium webdriver
+    #     :param wait_time: wait time in seconds
+    #     :param xpath: xpath expression to wait
+    #     :return:
+    #     """
+    #     try:
+    #         driver.support.ui.WebDriverWait(driver, wait_time).until(driver.support.expected_conditions.presence_of_element_located((By.XPATH, xpath)))
+    #     except Exception as e:
+    #         print(e)
+
