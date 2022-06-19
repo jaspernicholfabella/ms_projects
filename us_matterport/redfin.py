@@ -90,7 +90,7 @@ class Redfin(Runner):
             else:
                 SW.get_url(driver, self.datapoints['web_search'].format(county_code), sleep_seconds=1)
 
-            self.zs.selenium_utils.wait_for_page_load(driver, wait_time=700)
+            self.zs.selenium_utils.wait_for_page_load(driver, wait_time=600)
 
             try:
                 self.wait_for_element(driver, "//div[@class='homes summary']", wait_time=100)

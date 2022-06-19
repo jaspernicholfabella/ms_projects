@@ -14,10 +14,12 @@ from pyersq.web_runner import Runner
 from pyersq.row import Row
 import pyersq.utils as squ
 from bs4 import BeautifulSoup
+from threading import Thread
 
 from ms_projects.utility_scripts.zenscraper import ZenScraper, By, UtilFunctions
+from ms_projects.utility_scripts.zenscraper_0_3 import ZenScraper as zs3
 
-class Applelstore(Runner):
+class Applestore(Runner):
     """Collect data from website"""
     def __init__(self, argv):
         super().__init__(argv, output_prefix='applelstore', output_subdir="raw", output_type='csv')
@@ -61,15 +63,39 @@ class Applelstore(Runner):
                 country = element.get_attribute('innerText')
                 self.locale_to_countries.update({locale: country})
 
-
         store_list_object = scraper.get_json_from_html_script_tag(id='__NEXT_DATA__')
 
         for locale, locale_value in store_list_object['props']['locale']['allGeoConfigs'].items():
             print(locale)
             self.root_map.update({locale : locale_value['rootPath']})
 
-        for store_data in store_list_object['props']['pageProps']['storeList']:
+        store_list_object_array = store_list_object['props']['pageProps']['storeList']
+        run_array = zs3().utils.data.split_list(store_list_object_array, wanted_parts=5)
 
+        threads = []
+        for i in range(5):
+            threads.append(self.run_scraping(scraper, run_array[i]))
+
+        for thread in threads:
+            thread.join()
+
+
+    def threaded(func):
+        """
+        Decorator that multithreads the target function
+        with the given parameters. Returns the thread
+        created for the function
+        """
+        def wrapper(*args, **kwargs):
+            thread = Thread(target=func, args=args)
+            thread.start()
+            return thread
+        return wrapper
+
+
+    @threaded
+    def run_scraping(self, scraper, store_list_object):
+        for store_data in store_list_object:
             self.out.country = self.locale_to_countries[store_data['calledLocale']]
             self.out.lang = store_data['locale'].replace('_', '-')
 
@@ -201,7 +227,7 @@ class Applelstore(Runner):
 
 def main(argv):
     """Main entry"""
-    web = Applelstore(argv)
+    web = Applestore(argv)
     web.run()
 
 if __name__ == "__main__":

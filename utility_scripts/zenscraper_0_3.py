@@ -15,6 +15,7 @@ import requests
 import lxml.html
 from lxml import etree
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+from threading import Thread
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 sys.path.append('../../scripts')
@@ -345,17 +346,19 @@ class _UtilFunctions:
     html = None
     json = None
     parse = None
+    decorator = None
+    data = None
 
     def __init__(self):
-        self.strings = _UtilFunctions_Strings()
-        self.files = _UtilFunctions_Files()
-        self.html = _UtilFunctions_HTML()
-        self.json = _UtilFunctions_JSON()
-        self.parse = _UtilFunctions_Parse()
+        self.strings = _UtilFunctionsStrings()
+        self.files = _UtilFunctionsFiles()
+        self.html = _UtilFunctionsHTML()
+        self.json = _UtilFunctionsJSON()
+        self.parse = _UtilFunctionsParse()
+        self.decorator = _UtilFunctionsDecorator()
+        self.data = _UtilFunctionsData()
 
-
-
-class _UtilFunctions_Strings:
+class _UtilFunctionsStrings:
 
     @staticmethod
     def strip_html(data):
@@ -416,7 +419,14 @@ class _UtilFunctions_Strings:
         }
         return quarter_dict[month.lower().strip()]
 
-class _UtilFunctions_Files:
+    @staticmethod
+    def contains_number(value):
+        for character in value:
+            if character.isdigit():
+                return True
+        return False
+
+class _UtilFunctionsFiles:
     @staticmethod
     def create_directory(dir_name):
         """ Create a directory """
@@ -457,7 +467,7 @@ class _UtilFunctions_Files:
             return []
         return list_of_files
 
-class _UtilFunctions_JSON:
+class _UtilFunctionsJSON:
 
     def save_json(self, url='', jsondir='', file_name='data.json'):
         """
@@ -533,7 +543,7 @@ class _UtilFunctions_JSON:
                     return json_object
         return None
 
-class _UtilFunctions_HTML:
+class _UtilFunctionsHTML:
 
     def save_html(self, url='', htmldir='', filename='', driver=None):
         """
@@ -647,7 +657,7 @@ class _UtilFunctions_HTML:
             print(etree.tostring(self.doc, pretty_print=True))
         return etree.tostring(self.doc, pretty_print=True)
 
-class _UtilFunctions_Parse:
+class _UtilFunctionsParse:
     @staticmethod
     def is_partial_run(parser):
         """ Create a Partial run based on an argument """
@@ -661,6 +671,50 @@ class _UtilFunctions_Parse:
         fetch_arr = fetch
         fetch_arr.append(['#----------------------End of Partial Run---------------------#'])
         return fetch_arr
+
+class _UtilFunctionsDecorator:
+
+    def retry(func):
+        def retry_decorator(retry_times=3, sleep_seconds=1, false_output=None):
+            for i in range(retry_times + 1):
+                if i > 0:
+                    logger.warning('retrying a %s function %s times', (func().__name__, i))
+                try:
+                    data = func()
+                except Exception as err: #pylint: disable=broad-except
+                    logger.error(err)
+                    time.sleep(sleep_seconds)
+                    continue
+                if false_output is None:
+                    if data is not false_output:
+                        break
+                else:
+                    if data != false_output:
+                        break
+                time.sleep(sleep_seconds)
+            return data
+        return retry_decorator
+
+    def threaded(func):
+        """
+        Decorator that multithreads the target function
+        with the given parameters. Returns the thread
+        created for the function
+        """
+        def wrapper(*args, **kwargs):
+            thread = Thread(target=func, args=args)
+            thread.start()
+            return thread
+
+        return wrapper
+
+class _UtilFunctionsData:
+    @staticmethod
+    def split_list(alist, wanted_parts=1):
+        length = len(alist)
+        return [alist[i * length // wanted_parts: (i + 1) * length // wanted_parts]
+                for i in range(wanted_parts)]
+
 
 class _Data_Stream:
 
