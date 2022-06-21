@@ -3,11 +3,14 @@ import json.decoder
 import sys
 import calendar
 import re
+from os.path import abspath
 import time
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
 from html import unescape
 import pandas as pd
+import html
+import numpy as np
 
 sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
@@ -17,15 +20,17 @@ from bs4 import BeautifulSoup
 
 from ms_projects.utility_scripts.zenscraper_0_3 import ZenScraper, By
 
+
 class Applestore(Runner):
     """Collect data from website"""
+    threaded = ZenScraper().utils.decorator.threaded
 
     def __init__(self, argv):
-        super().__init__(argv, output_prefix='applelstore', output_subdir="raw", output_type='csv')
+        super().__init__(argv, output_prefix='applestore', output_subdir="raw", output_type='csv')
         self.datapoints = {
-            "base_url" : "https://www.apple.com/retail/storelist/",
-            "locale_json_url" : 'https://www.apple.com/rsp-web/autocomplete?locale=en_US',
-            "store_json_url" : 'https://www.apple.com/rsp-web/store-search?locale={}&sc=false',
+            "base_url": "https://www.apple.com/retail/storelist/",
+            "locale_json_url": 'https://www.apple.com/rsp-web/autocomplete?locale=en_US',
+            "store_json_url": 'https://www.apple.com/rsp-web/store-search?locale={}&sc=false',
             "out": ['country', 'state', 'city', 'store_name', 'address_line_1',
                     'address_line_2', 'phone', 'url', 'id', 'updated', 'lang', 'store_name',
                     'address_line_1_local', 'address_line_2_local', 'state_local', 'city_local',
@@ -41,16 +46,11 @@ class Applestore(Runner):
         self.root_map = {}
         self.failed_fetch = []
 
-
     def get_raw(self, **kwargs):
         """ Get raw data from source"""
         scraper = ZenScraper()
         scraper.get(self.datapoints['base_url'])
         self.get_locale(scraper)
-        # scraper.get('https://www.apple.com/retail/fifthavenue/')
-        # individual_store_json = scraper.get_json_from_html_script_tag(id='__NEXT_DATA__')
-        # print(individual_store_json)
-
         return self.fetch_out
 
     def get_locale(self, scraper):
@@ -61,27 +61,15 @@ class Applestore(Runner):
                 country = element.get_attribute('innerText')
                 self.locale_to_countries.update({locale: country})
 
-        store_list_object = scraper.utils.json.get_json_from_html_script_tag(doc=scraper.doc, id='__NEXT_DATA__')
+        store_list_object = scraper.utils.json.get_json_from_html_script_tag(doc=scraper.doc,
+                                                                             id='__NEXT_DATA__')
 
         for locale, locale_value in store_list_object['props']['locale']['allGeoConfigs'].items():
-            print(locale)
-            self.root_map.update({locale : locale_value['rootPath']})
+            self.root_map.update({locale: locale_value['rootPath']})
 
         store_list_object_array = store_list_object['props']['pageProps']['storeList']
-        self.run_scraping(scraper, store_list_object_array)
-        # run_array = ZenScraper().utils.data.split_list(store_list_object_array, wanted_parts=5)
-        #
-        # threads = []
-        # for i in range(5):
-        #     threads.append(self.run_scraping(scraper, run_array[i]))
-        #
-        # for thread in threads:
-        #     thread.join()
 
-
-
-    def run_scraping(self, scraper, store_list_object):
-        for store_data in store_list_object:
+        for store_data in store_list_object_array:
             self.out.country = self.locale_to_countries[store_data['calledLocale']]
             self.out.lang = store_data['locale'].replace('_', '-')
 
@@ -113,7 +101,8 @@ class Applestore(Runner):
                 new_scraper = ZenScraper()
                 new_scraper.get(self.out.url, sleep_seconds=self.sleep_seconds)
                 print('scraping data from ', self.out.url)
-                individual_store_json = new_scraper.utils.json.get_json_from_html_script_tag(doc=new_scraper.doc, id='__NEXT_DATA__')
+                individual_store_json = new_scraper.utils.json.get_json_from_html_script_tag(
+                    doc=new_scraper.doc, id='__NEXT_DATA__')
                 if individual_store_json is not None:
                     local_store = individual_store_json['props']['pageProps']['storeDetails']
                     self.scrape_from_local_store(local_store, has_state)
@@ -122,8 +111,6 @@ class Applestore(Runner):
         except Exception as e:
             self.failed_fetch.append(self.out.url)
             print(f'ERROR: failed at {self.out.url} {e}')
-
-
 
     def scrape_from_local_store(self, local_store, has_state):
         if not has_state:
@@ -137,7 +124,7 @@ class Applestore(Runner):
         self.out.city_local = local_store['address']['city']
         self.out.postal_code = local_store['address']['postal']
         try:
-            self.out.message_local = local_store['message']
+            self.out.message_local = html.unescape(local_store['message'])
         except:
             self.out.message_local = ''
         self.out.latitude = local_store['geolocation']['latitude']
@@ -167,21 +154,23 @@ class Applestore(Runner):
 
             self.out.dates = temp_date.strftime('%Y%m%d')
             self.out.days = calendar.day_name[temp_date.weekday()]
-            self.out.times_local = local_days['formattedTime']
-            if self.contains_number(str(local_days['formattedTime'])):
-                self.out.closed = 'False'
+            self.out.times_local = html.unescape(local_days['formattedTime'])
+            if ZenScraper().utils.strings.contains_number(
+                    html.unescape(local_days['formattedTime'])):
+                self.out.closed = False
             else:
-                self.out.close = 'True'
+                self.out.closed = True
             self.out.special_hours = local_days['specialHours']
             self.out.time_created = self.fetch_date
             self.fetch_out.append(self.out.values())
 
     def __remove_unwanted_char(self, str):
         clean = re.sub('&[^;]+;', ' ', str)
-        #&#26376;
+        # &#26376;
         return clean
 
     def __util_url_from_slug(self, locale, root_path, slug):
+        """get util from slug"""
         if locale == 'zh_CN':
             url = 'https://www.apple.com.cn/retail/' + slug + '/'
         else:
@@ -195,26 +184,43 @@ class Applestore(Runner):
         """Save raw data to file"""
         data_frame = pd.DataFrame(raw, columns=self.out.header())
         data_frame.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"],
-                   value=["", ""], regex=True, inplace=True)
+                           value=["", ""], regex=True, inplace=True)
         data_frame.set_index("ObjectKey", inplace=True)
-        data_frame = data_frame.sort_values(by='country', key=lambda col: col.str.lower())
         return data_frame
 
     def cleanup(self):
+        """Cleanup File"""
         for data in set(self.failed_fetch):
             print(data)
+        # self.generate_map_data()
 
-    @staticmethod
-    def contains_number(value):
-        for character in value:
-            if character.isdigit():
-                return True
-        return False
+
+    def generate_map_data(self):
+        """generate world_map_data.csv"""
+        output_csv_data = pd.read_csv(
+            abspath(f"{self.outdir}/raw/applestore_{datetime.now().strftime('%Y%m%d')}.csv"))
+
+        row_to_delete = self.datapoints['out']
+        row_to_delete.append('store_name.1')
+
+        new_csv_data = ZenScraper().utils.data.df_delete_col_except(
+            output_csv_data, row_to_delete,
+            exception_list=['id', 'latitude', 'longitude', 'closed']
+        )
+        map_df = new_csv_data.drop_duplicates(subset=['id'], keep='first')
+        map_df['closed'] = np.where(map_df['closed'] == False, 'Open', 'Closed')
+        map_df.rename(columns={'id': 'store', 'closed': 'status'})
+        map_df = ZenScraper().utils.data.df_col_pop(map_df, 'status')
+        map_df = ZenScraper().utils.data.df_col_pop(map_df, 'store')
+        map_df.to_csv(f"{self.outdir}/raw/world_map_data_{datetime.now().strftime('%Y%m%d')}.csv",
+                      index=False)
+
 
 def main(argv):
     """Main entry"""
     web = Applestore(argv)
     web.run()
+
 
 if __name__ == "__main__":
     main(sys.argv)

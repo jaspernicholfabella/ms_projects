@@ -18,7 +18,6 @@ import lxml.html
 from lxml import etree
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
 
-
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 sys.path.append('../../scripts')
 from pyersq.requests_wrapper import RequestsWrapper
@@ -26,6 +25,7 @@ from pyersq.requests_wrapper import RequestsWrapper
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
+
 
 # zenscraper 0.3
 class ZenScraper:
@@ -69,7 +69,8 @@ class ZenScraper:
             if doc is None:
                 doc = self.doc
             element = doc.xpath(xpath)
-            logger.info('%s element found', ZenElement(element[0]).get_tag())  # pylint: disable=logging-fstring-interpolation
+            logger.info('%s element found', ZenElement(
+                element[0]).get_tag())  # pylint: disable=logging-fstring-interpolation
             return ZenElement(element[0])
         except (IndexError, lxml.etree.XPathEvalError, lxml.etree.XPathError,
                 lxml.etree.Error) as err:
@@ -149,6 +150,7 @@ class ZenScraper:
         """
         return str(self.response.url)
 
+
 class ZenElement:
     """ ZenElement , work like selenium Element Object """
     element = None
@@ -180,7 +182,7 @@ class ZenElement:
     def _find_element(self, err_message="", xpath=""):
         """ Find ELement"""
         try:
-            logger.info( # pylint: disable=logging-fstring-interpolation
+            logger.info(  # pylint: disable=logging-fstring-interpolation
                 '%s element found', ZenElement(self.element.xpath(xpath)[0]).get_tag())
             return ZenElement(self.element.xpath(xpath)[0])
         except (lxml.etree.XPathEvalError, lxml.etree.XPathError, lxml.etree.Error) as err:
@@ -328,6 +330,7 @@ class ZenElement:
             xpath=f"./children::{tagname}",
         )
 
+
 class By(Enum):
     """ By Enumerator to make element searching same as Selenium Searching format. """
     ID = 1
@@ -340,7 +343,7 @@ class By(Enum):
     CSS_SELECTOR = 8
 
 
-class _UtilFunctions: #pylint: disable=too-few-public-methods
+class _UtilFunctions:  # pylint: disable=too-few-public-methods
     """ Utility Functions mostly used in Scraping """
     strings = None
     files = None
@@ -461,6 +464,7 @@ class _UtilFunctionsStrings:
                 return True
         return False
 
+
 class _UtilFunctionsFiles:
     @staticmethod
     def create_directory(dir_name):
@@ -508,11 +512,11 @@ class _UtilFunctionsFiles:
 
         if to_dict_val == '':
             return to_find_data[header].drop_duplicates().to_list()
-        else:
-            return to_find_data.set_index(header).to_dict()[to_dict_val]
+
+        return to_find_data.set_index(header).to_dict()[to_dict_val]
 
     @staticmethod
-    def get_file_list(file_dir='.', file_extension='txt',  is_latest_only=False):
+    def get_file_list(file_dir='.', file_extension='txt', is_latest_only=False):
         """
         get list of all file in the directory
         :param file_dir: file directory string
@@ -530,6 +534,7 @@ class _UtilFunctionsFiles:
             return []
         return list_of_files
 
+
 class _UtilFunctionsJSON:
 
     @staticmethod
@@ -544,8 +549,8 @@ class _UtilFunctionsJSON:
         sold_items = requests.get(url)
         Path(f'{jsondir}/{file_name}.json').write_bytes(sold_items.content)
 
-
-    def get_json(self, url, sleep_seconds=None, index=0):
+    @staticmethod
+    def get_json(url, sleep_seconds=None):
         """
         :param url: url to get json
         :return: json file
@@ -555,14 +560,7 @@ class _UtilFunctionsJSON:
             sleep_seconds = random.randint(1, 3)
         req = RequestsWrapper()
         res = req.get(url, sleep_seconds=sleep_seconds)
-        try:
-            return res.json()
-        except Exception as err:
-            logger.error(err)
-            bad_json = res.text()
-            improved_json = self._improve_json_content(bad_json)
-            json_object = self._bruteforce_json_fix(improved_json)
-            return json.loads(json_object)
+        return res.json()
 
     def get_json_from_html_script_tag(self, doc=None, index=0, **kwargs):
         """
@@ -574,11 +572,10 @@ class _UtilFunctionsJSON:
         logger.info('getting json from html script')
         soup = BeautifulSoup(_UtilFunctions().html.print_html(doc=doc, is_print=False), 'lxml')
         res = soup.find('script', **kwargs)
-
         try:
             json_object = json.loads(res.contents[index])
             return json_object
-        except Exception as err: #pylint: disable=broad-except
+        except Exception as err:  # pylint: disable=broad-except
             logger.error(err)
             bad_json = res.contents[index]
             improved_json = self._improve_json_content(bad_json)
@@ -601,6 +598,7 @@ class _UtilFunctionsJSON:
         :param retry_count: retry count
         :return: fixed json string
         """
+
         def add_strings(prefix, improved_json, retry_count, prefix_to_increment='}]'):
             for i in range(retry_count):
                 suffix = ''
@@ -610,19 +608,21 @@ class _UtilFunctionsJSON:
                         json_object = json.loads(f'{improved_json}{prefix}{suffix}')
                         logger.warning('json bruteforce success.')
                         return json_object
-                    except Exception: #pylint: disable=broad-except
+                    except Exception:  # pylint: disable=broad-except
                         logger.info('fix_type #%s adding %s%s: retrying %s times.',
                                     i, prefix, suffix, j)
                 prefix += prefix_to_increment
             return None
 
-        for prefix_to_increment in ['}]', ']']:
+        for prefix_to_increment in ['}]', ']', ']}]']:
             for prefix in ['', '"', '"}']:
                 json_object = add_strings(prefix, improved_json, retry_count,
                                           prefix_to_increment=prefix_to_increment)
                 if json_object is not None:
                     return json_object
+        logger.error('bruteforce failed.')
         return None
+
 
 class _UtilFunctionsHTML:
 
@@ -649,7 +649,8 @@ class _UtilFunctionsHTML:
                 file.write(res.text)
 
     @staticmethod
-    def get_html_table(driver=None, table_index=0, just_header=False, with_header=False, **kwargs):  # pylint: disable=too-many-locals,too-many-branches
+    def get_html_table(driver=None, table_index=0, just_header=False, with_header=False,
+                       **kwargs):  # pylint: disable=too-many-locals,too-many-branches
         """
         Getting HTMl Table from <table> tag inside an html
         :param driver: selenium driver to scrape table data
@@ -740,6 +741,7 @@ class _UtilFunctionsHTML:
             print(etree.tostring(doc, pretty_print=True))
         return etree.tostring(doc, pretty_print=True)
 
+
 class _UtilFunctionsParse:
 
     @staticmethod
@@ -756,6 +758,7 @@ class _UtilFunctionsParse:
         fetch_arr.append(['#----------------------End of Partial Run---------------------#'])
         return fetch_arr
 
+
 class _UtilFunctionsDecorator:
     @staticmethod
     def retry(func, retry_times=3, sleep_seconds=1, false_output=None):
@@ -767,13 +770,14 @@ class _UtilFunctionsDecorator:
         :param false_output: output that should be disregarded on the retry
         :return: value or false_output
         """
+
         def retry_decorator():
             for i in range(retry_times + 1):
                 if i > 0:
                     logger.warning('retrying a %s function %s times', func().__name__, i)
                 try:
                     data = func()
-                except Exception as err: #pylint: disable=broad-except
+                except Exception as err:  # pylint: disable=broad-except
                     logger.error(err)
                     time.sleep(sleep_seconds)
                     continue
@@ -785,6 +789,7 @@ class _UtilFunctionsDecorator:
                         break
                 time.sleep(sleep_seconds)
             return data
+
         return retry_decorator
 
     @staticmethod
@@ -794,13 +799,17 @@ class _UtilFunctionsDecorator:
         with the given parameters. Returns the thread
         created for the function
         """
+
         def wrapper(*args, **kwargs):
             thread = Thread(target=func, args=args)
             thread.start()
             return thread
+
         return wrapper
 
-class _UtilFunctionsData: #pylint: disable=too-few-public-methods
+
+class _UtilFunctionsData:  # pylint: disable=too-few-public-methods
+
     @staticmethod
     def split_list(alist, wanted_parts=1):
         """
@@ -813,9 +822,61 @@ class _UtilFunctionsData: #pylint: disable=too-few-public-methods
         return [alist[i * length // wanted_parts: (i + 1) * length // wanted_parts]
                 for i in range(wanted_parts)]
 
-class _DataStream: #pylint: disable=too-few-public-methods
+    @staticmethod
+    def df_delete_col_except(dataframe, list_of_col, exception_list=None):
+        """
+        :param dataframe: dataframe to modify
+        :param list_of_col: list of all column to remove
+        :param exception_list: list of all exceptions
+        :return:
+        """
+        temp_df = dataframe
+        if exception_list is None:
+            exception_list = []
 
-    class DataType: #pylint: disable=too-few-public-methods
+        for col in list_of_col:
+            if any(x == str(col) for x in exception_list):
+                pass
+            else:
+                try:
+                    temp_df.drop(str(col), inplace=True, axis=1)
+                except Exception:  # pylint: disable=broad-except
+                    pass
+
+        return temp_df
+
+    @staticmethod
+    def df_col_pop(dataframe, col_name, is_int=False):
+        """
+        pop column(header) to the top of all column
+        :param df: dataframe
+        :param col_name: column to pop on top of all column
+        :param is_int: is the value of the column int?
+        :return:
+        """
+        cols = list(dataframe)
+        cols.insert(0, cols.pop(cols.index(col_name)))
+        # us ix to reorder (loc for str or boolean, iloc for int)
+        if not is_int:
+            dataframe = dataframe.loc[:, cols]
+            return dataframe
+        dataframe = dataframe.iloc[:, cols]
+        return dataframe
+
+    @staticmethod
+    def df_sort_row(dataframe, col_name):
+        """
+        sort dataframe row based on column name
+        :param dataframe: dataframe to sort
+        :param col_name: column name to sort every value with
+        :return: return dataframe with sorted value
+        """
+        return dataframe.sort_values(by=col_name, key=lambda col: col.str.lower())
+
+
+class _DataStream:  # pylint: disable=too-few-public-methods
+
+    class DataType:  # pylint: disable=too-few-public-methods
         """Unique type class to decipher between attributes"""
 
         def __init__(self, key, value):
@@ -827,7 +888,7 @@ class _DataStream: #pylint: disable=too-few-public-methods
             """Return value"""
             return str(self.value)
 
-    class DataObject: #pylint: disable=too-few-public-methods
+    class DataObject:  # pylint: disable=too-few-public-methods
         """Basic ORM Class"""
 
         def __init__(self, **kwargs):
@@ -836,7 +897,7 @@ class _DataStream: #pylint: disable=too-few-public-methods
                 setattr(self, key, _DataStream().DataType(key, value))
 
 
-class _SeleniumUtils: #pylint: disable=too-few-public-methods
+class _SeleniumUtils:  # pylint: disable=too-few-public-methods
 
     def wait_for_page_load(self, driver, wait_time=30):
         """
