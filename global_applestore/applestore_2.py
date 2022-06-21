@@ -14,13 +14,12 @@ from pyersq.web_runner import Runner
 from pyersq.row import Row
 import pyersq.utils as squ
 from bs4 import BeautifulSoup
-from threading import Thread
 
-from ms_projects.utility_scripts.zenscraper import ZenScraper, By, UtilFunctions
-from ms_projects.utility_scripts.zenscraper_0_3 import ZenScraper as zs3
+from ms_projects.utility_scripts.zenscraper_0_3 import ZenScraper, By
 
 class Applestore(Runner):
     """Collect data from website"""
+
     def __init__(self, argv):
         super().__init__(argv, output_prefix='applelstore', output_subdir="raw", output_type='csv')
         self.datapoints = {
@@ -34,7 +33,6 @@ class Applestore(Runner):
                     'times_local', 'special_hours', 'closed', 'time_created'],
         }
 
-        self.parser = squ.get_parser()
         self.sleep_seconds = 0
         self.out = Row(self.datapoints['out'])
         self.fetch_out = []
@@ -63,37 +61,25 @@ class Applestore(Runner):
                 country = element.get_attribute('innerText')
                 self.locale_to_countries.update({locale: country})
 
-        store_list_object = scraper.get_json_from_html_script_tag(id='__NEXT_DATA__')
+        store_list_object = scraper.utils.json.get_json_from_html_script_tag(doc=scraper.doc, id='__NEXT_DATA__')
 
         for locale, locale_value in store_list_object['props']['locale']['allGeoConfigs'].items():
             print(locale)
             self.root_map.update({locale : locale_value['rootPath']})
 
         store_list_object_array = store_list_object['props']['pageProps']['storeList']
-        run_array = zs3().utils.data.split_list(store_list_object_array, wanted_parts=5)
-
-        threads = []
-        for i in range(5):
-            threads.append(self.run_scraping(scraper, run_array[i]))
-
-        for thread in threads:
-            thread.join()
-
-
-    def threaded(func):
-        """
-        Decorator that multithreads the target function
-        with the given parameters. Returns the thread
-        created for the function
-        """
-        def wrapper(*args, **kwargs):
-            thread = Thread(target=func, args=args)
-            thread.start()
-            return thread
-        return wrapper
+        self.run_scraping(scraper, store_list_object_array)
+        # run_array = ZenScraper().utils.data.split_list(store_list_object_array, wanted_parts=5)
+        #
+        # threads = []
+        # for i in range(5):
+        #     threads.append(self.run_scraping(scraper, run_array[i]))
+        #
+        # for thread in threads:
+        #     thread.join()
 
 
-    @threaded
+
     def run_scraping(self, scraper, store_list_object):
         for store_data in store_list_object:
             self.out.country = self.locale_to_countries[store_data['calledLocale']]
@@ -127,7 +113,7 @@ class Applestore(Runner):
                 new_scraper = ZenScraper()
                 new_scraper.get(self.out.url, sleep_seconds=self.sleep_seconds)
                 print('scraping data from ', self.out.url)
-                individual_store_json = new_scraper.get_json_from_html_script_tag(id='__NEXT_DATA__')
+                individual_store_json = new_scraper.utils.json.get_json_from_html_script_tag(doc=new_scraper.doc, id='__NEXT_DATA__')
                 if individual_store_json is not None:
                     local_store = individual_store_json['props']['pageProps']['storeDetails']
                     self.scrape_from_local_store(local_store, has_state)
@@ -162,7 +148,7 @@ class Applestore(Runner):
 
         past_day = 0
         for local_days in local_store_hours['days']:
-            formatted_day = UtilFunctions().remove_non_digits(
+            formatted_day = ZenScraper().utils.strings.remove_non_digits(
                 self.__remove_unwanted_char(
                     local_days['formattedDayDateA11y']
                 )
@@ -183,9 +169,9 @@ class Applestore(Runner):
             self.out.days = calendar.day_name[temp_date.weekday()]
             self.out.times_local = local_days['formattedTime']
             if self.contains_number(str(local_days['formattedTime'])):
-                self.out.closed = 'FALSE'
+                self.out.closed = 'False'
             else:
-                self.out.close = 'TRUE'
+                self.out.close = 'True'
             self.out.special_hours = local_days['specialHours']
             self.out.time_created = self.fetch_date
             self.fetch_out.append(self.out.values())
@@ -211,7 +197,7 @@ class Applestore(Runner):
         data_frame.replace(to_replace=[r"\\t|\\n|\\r", "\t|\n|\r"],
                    value=["", ""], regex=True, inplace=True)
         data_frame.set_index("ObjectKey", inplace=True)
-        # data_frame = data_frame.sort_values(by='Country', key=lambda col: col.str.lower())
+        data_frame = data_frame.sort_values(by='country', key=lambda col: col.str.lower())
         return data_frame
 
     def cleanup(self):

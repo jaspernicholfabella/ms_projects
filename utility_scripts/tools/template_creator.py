@@ -45,9 +45,9 @@ def create_files(input_dict):
 
 if __name__ == '__main__':
     input_dict = {
-        'name': 'us_ferc',
-        'description': 'XBRL Data Extractor',
-        'python_file': 'xbrl_scraper.py',
+        'name': 'us_opendoor_homes',
+        'description': 'US Opendoor Homes',
+        'python_file': 'opendoor.py',
         'output_dir': 'us_ferc/',
         # 'date_to_run': 'run_calendar: 5thDayOfEveryQuarter',
         'date_to_run': 'days_of_week: all',

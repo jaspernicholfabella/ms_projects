@@ -10,12 +10,14 @@ import logging
 import glob
 import os
 from pathlib import Path
+from threading import Thread
+import pandas as pd
 from bs4 import BeautifulSoup
 import requests
 import lxml.html
 from lxml import etree
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from threading import Thread
+
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 sys.path.append('../../scripts')
@@ -24,7 +26,6 @@ from pyersq.requests_wrapper import RequestsWrapper
 logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.WARNING)
-
 
 # zenscraper 0.3
 class ZenScraper:
@@ -39,7 +40,7 @@ class ZenScraper:
     def __init__(self):
         self.utils = _UtilFunctions()
         self.selenium_utils = _SeleniumUtils()
-        self.datastream = _Data_Stream()
+        self.datastream = _DataStream()
         self.logger = logger
 
     def _find_elements_list(self, err_message="", xpath="", doc=None):
@@ -68,8 +69,7 @@ class ZenScraper:
             if doc is None:
                 doc = self.doc
             element = doc.xpath(xpath)
-            logger.info(
-                f'{ZenElement(element[0]).get_tag()} element found')  # pylint: disable=logging-fstring-interpolation
+            logger.info('%s element found', ZenElement(element[0]).get_tag())  # pylint: disable=logging-fstring-interpolation
             return ZenElement(element[0])
         except (IndexError, lxml.etree.XPathEvalError, lxml.etree.XPathError,
                 lxml.etree.Error) as err:
@@ -180,8 +180,8 @@ class ZenElement:
     def _find_element(self, err_message="", xpath=""):
         """ Find ELement"""
         try:
-            logger.info(
-                f'{ZenElement(self.element.xpath(xpath)[0]).get_tag()} element found')  # pylint: disable=logging-fstring-interpolation
+            logger.info( # pylint: disable=logging-fstring-interpolation
+                '%s element found', ZenElement(self.element.xpath(xpath)[0]).get_tag())
             return ZenElement(self.element.xpath(xpath)[0])
         except (lxml.etree.XPathEvalError, lxml.etree.XPathError, lxml.etree.Error) as err:
             logger.error(err_message)
@@ -339,7 +339,8 @@ class By(Enum):
     CLASS_NAME = 7
     CSS_SELECTOR = 8
 
-class _UtilFunctions:
+
+class _UtilFunctions: #pylint: disable=too-few-public-methods
     """ Utility Functions mostly used in Scraping """
     strings = None
     files = None
@@ -358,48 +359,77 @@ class _UtilFunctions:
         self.decorator = _UtilFunctionsDecorator()
         self.data = _UtilFunctionsData()
 
+
 class _UtilFunctionsStrings:
 
     @staticmethod
-    def strip_html(data):
-        """ strip html tags from the string. """
+    def strip_html(value):
+        """
+        Strip HTML tags from string
+        :param value: input a string
+        :return:
+        """
         logger.info('stripping HTML tags from string')
         string = re.compile(r"<.*?>|=")
-        return string.sub("", data)
+        return string.sub("", value)
 
     @staticmethod
-    def remove_non_digits(input):
-        output = ''.join(c for c in input if c.isdigit())
+    def remove_non_digits(value):
+        """
+        remove non digit character from a string
+        :param value: string
+        :return: string
+        """
+        output = ''.join(c for c in value if c.isdigit())
         return output
 
     @staticmethod
-    def remove_digits(input):
-        output = ''.join(c for c in input if not c.isdigit())
+    def remove_digits(value):
+        """
+        remove all digit character in a string
+        :param value: string
+        :return: string
+        """
+        output = ''.join(c for c in value if not c.isdigit())
         return output
 
     @staticmethod
-    def remove_non_alphachar(input):
-        input = input.lower()
+    def remove_non_alpha_char(value):
+        """
+        remove non letters
+        :param value: string
+        :return: string
+        """
+        value = value.lower()
         output = ''
         letter = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
                   'q', 'r', 's', 't', 'u',
                   'v', 'w', 'x', 'y', 'z']
-        for char in input:
+        for char in value:
             if any(x == char for x in letter):
                 output += char
         return output
 
     @staticmethod
     def is_month(month):
+        """
+        Check if the string is a month
+        :param month: month string 3 characters only
+        :return: bool
+        """
         if any(x == month.lower() for x in
                ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov',
                 'dec']):
             return True
-        else:
-            return False
+        return False
 
     @staticmethod
     def spanish_months(month):
+        """
+        check for spanish month
+        :param month: check month
+        :return: return month equivalent in string 'jan, feb, mar'
+        """
         spanish_months_dict = {
             'enero': 'jan', 'febrero': 'feb', 'marzo': 'mar',
             'abril': 'apr', 'mayo': 'may', 'junio': 'jun',
@@ -410,7 +440,11 @@ class _UtilFunctionsStrings:
 
     @staticmethod
     def quarter1_to_month(month):
-        """get quarter based on a month data"""
+        """
+        get quarter month based on quarter data
+        :param month: input quarter e.g. q1 = mar
+        :return: month string
+        """
         quarter_dict = {
             'q1': 'mar',
             'q2': 'jun',
@@ -421,6 +455,7 @@ class _UtilFunctionsStrings:
 
     @staticmethod
     def contains_number(value):
+        """check if a string contains number"""
         for character in value:
             if character.isdigit():
                 return True
@@ -456,7 +491,35 @@ class _UtilFunctionsFiles:
         logger.error('error on file download')
 
     @staticmethod
+    def get_input_file(input_path, header='', sheet_number=0, to_dict_val=''):
+        """
+        :param input_path: path of input file
+        :param header: the name of the header to scrape
+        :param has_sheet: check if csv or excel file input
+        :param to_dict_val: if this has value this will serve as the dictionary value and
+        header is the dictionary key
+        :return: list or dictionary if to_dict_val is not ''
+        """
+        logger.warning('importing file from %s', input_path)
+        if 'xlsx' in input_path:
+            to_find_data = pd.read_excel(os.path.abspath(input_path), sheet_name=sheet_number)
+        else:
+            to_find_data = pd.read_csv(os.path.abspath(input_path))
+
+        if to_dict_val == '':
+            return to_find_data[header].drop_duplicates().to_list()
+        else:
+            return to_find_data.set_index(header).to_dict()[to_dict_val]
+
+    @staticmethod
     def get_file_list(file_dir='.', file_extension='txt',  is_latest_only=False):
+        """
+        get list of all file in the directory
+        :param file_dir: file directory string
+        :param file_extension: file extension ('txt') is the default
+        :param is_latest_only: if this is True, then return only the latest file in the directory
+        :return: list of directory , or a single directory
+        """
         try:
             list_of_files = glob.glob(
                 f'{file_dir}/*.{file_extension}')  # * means all if need specific format then *.csv
@@ -469,7 +532,8 @@ class _UtilFunctionsFiles:
 
 class _UtilFunctionsJSON:
 
-    def save_json(self, url='', jsondir='', file_name='data.json'):
+    @staticmethod
+    def save_json(url='', jsondir='', file_name='data.json'):
         """
         :param url: url of the html page you want to save
         :param jsondir: directory on where to save the json
@@ -480,8 +544,8 @@ class _UtilFunctionsJSON:
         sold_items = requests.get(url)
         Path(f'{jsondir}/{file_name}.json').write_bytes(sold_items.content)
 
-    @staticmethod
-    def get_json(url, sleep_seconds=None):
+
+    def get_json(self, url, sleep_seconds=None, index=0):
         """
         :param url: url to get json
         :return: json file
@@ -491,9 +555,16 @@ class _UtilFunctionsJSON:
             sleep_seconds = random.randint(1, 3)
         req = RequestsWrapper()
         res = req.get(url, sleep_seconds=sleep_seconds)
-        return res.json()
+        try:
+            return res.json()
+        except Exception as err:
+            logger.error(err)
+            bad_json = res.text()
+            improved_json = self._improve_json_content(bad_json)
+            json_object = self._bruteforce_json_fix(improved_json)
+            return json.loads(json_object)
 
-    def get_json_from_html_script_tag(self, doc=None, index=0, to_add_or_remove=None, **kwargs):
+    def get_json_from_html_script_tag(self, doc=None, index=0, **kwargs):
         """
         :param doc: response document object
         :param index: index on the <script/> tag
@@ -501,26 +572,35 @@ class _UtilFunctionsJSON:
         """
         json_object = None
         logger.info('getting json from html script')
-        if doc is None:
-            doc = self.doc
-
-        soup = BeautifulSoup(self.print_html(is_print=False), 'lxml')
+        soup = BeautifulSoup(_UtilFunctions().html.print_html(doc=doc, is_print=False), 'lxml')
         res = soup.find('script', **kwargs)
 
         try:
             json_object = json.loads(res.contents[index])
             return json_object
-        except Exception as err:
+        except Exception as err: #pylint: disable=broad-except
             logger.error(err)
             bad_json = res.contents[index]
-            improved_json = re.sub(r'"\s*$', '",', bad_json, flags=re.MULTILINE)
-            improved_json.replace('"\\', '')
-            improved_json.replace("\'", '"')
+            improved_json = self._improve_json_content(bad_json)
             json_object = self._bruteforce_json_fix(improved_json)
         return json_object
 
     @staticmethod
+    def _improve_json_content(bad_json):
+        """improve json content"""
+        improved_json = re.sub(r'"\s*$', '",', bad_json, flags=re.MULTILINE)
+        improved_json.replace('"\\', '')
+        improved_json.replace("\'", '"')
+        return improved_json
+
+    @staticmethod
     def _bruteforce_json_fix(improved_json, retry_count=20):
+        """
+        private function to bruteforce json file
+        :param improved_json: parsed json data
+        :param retry_count: retry count
+        :return: fixed json string
+        """
         def add_strings(prefix, improved_json, retry_count, prefix_to_increment='}]'):
             for i in range(retry_count):
                 suffix = ''
@@ -530,8 +610,9 @@ class _UtilFunctionsJSON:
                         json_object = json.loads(f'{improved_json}{prefix}{suffix}')
                         logger.warning('json bruteforce success.')
                         return json_object
-                    except Exception:
-                        logger.info(f'fix_type #{i} adding {prefix}{suffix}: retrying {j} times.')
+                    except Exception: #pylint: disable=broad-except
+                        logger.info('fix_type #%s adding %s%s: retrying %s times.',
+                                    i, prefix, suffix, j)
                 prefix += prefix_to_increment
             return None
 
@@ -545,7 +626,8 @@ class _UtilFunctionsJSON:
 
 class _UtilFunctionsHTML:
 
-    def save_html(self, url='', htmldir='', filename='', driver=None):
+    @staticmethod
+    def save_html(url='', htmldir='', filename='', driver=None):
         """
         :param url: url of the html page you want to save
         :param htmldir: directory on where to save the html
@@ -647,17 +729,19 @@ class _UtilFunctionsHTML:
         logger.info(response.status_code)
         return response.status_code == 200
 
-    def print_html(self, is_print=True):
+    @staticmethod
+    def print_html(doc=None, is_print=True):
         """
         Print the HTMl file on the console.
         :return: HTML File as a String
         """
         logger.info('Printing HTML')
         if is_print:
-            print(etree.tostring(self.doc, pretty_print=True))
-        return etree.tostring(self.doc, pretty_print=True)
+            print(etree.tostring(doc, pretty_print=True))
+        return etree.tostring(doc, pretty_print=True)
 
 class _UtilFunctionsParse:
+
     @staticmethod
     def is_partial_run(parser):
         """ Create a Partial run based on an argument """
@@ -673,12 +757,20 @@ class _UtilFunctionsParse:
         return fetch_arr
 
 class _UtilFunctionsDecorator:
-
-    def retry(func):
-        def retry_decorator(retry_times=3, sleep_seconds=1, false_output=None):
+    @staticmethod
+    def retry(func, retry_times=3, sleep_seconds=1, false_output=None):
+        """
+        retry until output not equals to false_output
+        :param func: input a function to retry
+        :param retry_times: the number of retry
+        :param sleep_seconds: sleep time
+        :param false_output: output that should be disregarded on the retry
+        :return: value or false_output
+        """
+        def retry_decorator():
             for i in range(retry_times + 1):
                 if i > 0:
-                    logger.warning('retrying a %s function %s times', (func().__name__, i))
+                    logger.warning('retrying a %s function %s times', func().__name__, i)
                 try:
                     data = func()
                 except Exception as err: #pylint: disable=broad-except
@@ -695,6 +787,7 @@ class _UtilFunctionsDecorator:
             return data
         return retry_decorator
 
+    @staticmethod
     def threaded(func):
         """
         Decorator that multithreads the target function
@@ -705,20 +798,24 @@ class _UtilFunctionsDecorator:
             thread = Thread(target=func, args=args)
             thread.start()
             return thread
-
         return wrapper
 
-class _UtilFunctionsData:
+class _UtilFunctionsData: #pylint: disable=too-few-public-methods
     @staticmethod
     def split_list(alist, wanted_parts=1):
+        """
+        split list into several parts
+        :param alist: list of values
+        :param wanted_parts: how parts should the list have
+        :return: list of lists
+        """
         length = len(alist)
         return [alist[i * length // wanted_parts: (i + 1) * length // wanted_parts]
                 for i in range(wanted_parts)]
 
+class _DataStream: #pylint: disable=too-few-public-methods
 
-class _Data_Stream:
-
-    class DataType:
+    class DataType: #pylint: disable=too-few-public-methods
         """Unique type class to decipher between attributes"""
 
         def __init__(self, key, value):
@@ -730,29 +827,16 @@ class _Data_Stream:
             """Return value"""
             return str(self.value)
 
-        def __index__(self):
-            """Return Key"""
-            return int(self.key)
-
-    class DataObject:
+    class DataObject: #pylint: disable=too-few-public-methods
         """Basic ORM Class"""
 
         def __init__(self, **kwargs):
             """ORM to create classess with variables"""
             for key, value in kwargs.items():
-                setattr(self, key, _Data_Stream().DataType(key, value))
+                setattr(self, key, _DataStream().DataType(key, value))
 
-        @staticmethod
-        def attr_1():
-            """Adding this for Pylint issues"""
-            print("attr_1")
 
-        @staticmethod
-        def attr_2():
-            """Adding this for Pylint issues"""
-            print("attr_2")
-
-class _SeleniumUtils:
+class _SeleniumUtils: #pylint: disable=too-few-public-methods
 
     def wait_for_page_load(self, driver, wait_time=30):
         """
@@ -771,12 +855,12 @@ class _SeleniumUtils:
         :return:
         """
         for _ in wait_time:
-            x = driver.execute_script("return document.readyState")
-            if x == "complete":
+            loading = driver.execute_script("return document.readyState")
+            if loading == "complete":
                 return True
-            else:
-                time.sleep(0.5)
-                yield False
+
+            time.sleep(0.5)
+            yield False
         return True
 
     # @staticmethod
@@ -788,7 +872,7 @@ class _SeleniumUtils:
     #     :return:
     #     """
     #     try:
-    #         driver.support.ui.WebDriverWait(driver, wait_time).until(driver.support.expected_conditions.presence_of_element_located((By.XPATH, xpath)))
+    #         driver.support.ui.WebDriverWait(driver, wait_time).until(
+    #         driver.support.expected_conditions.presence_of_element_located((By.XPATH, xpath)))
     #     except Exception as e:
     #         print(e)
-

@@ -277,7 +277,7 @@ class ZenScraper:
         try:
             json_object = json.loads(res.contents[index])
             return json_object
-        except Exception as err:
+        except Exception as err: #pylint: disable=broad-except
             logger.error(err)
             bad_json = res.contents[index]
             improved_json = re.sub(r'"\s*$', '",', bad_json, flags=re.MULTILINE)
@@ -297,8 +297,8 @@ class ZenScraper:
                         json_object = json.loads(f'{improved_json}{prefix}{suffix}')
                         logger.warning('json bruteforce success.')
                         return json_object
-                    except Exception:
-                        logger.info(f'fix_type #{i} adding {prefix}{suffix}: retrying {j} times.')
+                    except Exception: #pylint: disable=broad-except
+                        logger.info(f'fix_type #{i} adding {prefix}{suffix}: retrying {j} times.') #pylint: disable=logging-fstring-interpolation
                 prefix += prefix_to_increment
             return None
 
@@ -544,6 +544,7 @@ class UtilFunctions:
 
     @staticmethod
     def remove_non_digits(seq):
+        """remove non digits carachter from string"""
         seq_type = type(seq)
         return seq_type().join(filter(seq_type.isdigit, seq))
 
