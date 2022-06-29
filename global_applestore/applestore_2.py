@@ -20,10 +20,8 @@ from bs4 import BeautifulSoup
 
 from ms_projects.utility_scripts.zenscraper_0_3 import ZenScraper, By
 
-
 class Applestore(Runner):
     """Collect data from website"""
-    threaded = ZenScraper().utils.decorator.threaded
 
     def __init__(self, argv):
         super().__init__(argv, output_prefix='applestore', output_subdir="raw", output_type='csv')
@@ -72,22 +70,22 @@ class Applestore(Runner):
         for store_data in store_list_object_array:
             self.out.country = self.locale_to_countries[store_data['calledLocale']]
             self.out.lang = store_data['locale'].replace('_', '-')
-
-            if store_data['hasStates'] is False:
-                self.out.state = self.out.country
-                for store in store_data['store']:
-                    self.get_store_data(scraper, store, store_data)
-            else:
-                for state in store_data['state']:
-                    self.out.state = state['name']
-                    for store in state['store']:
+            if 'jp' in store_data['locale'].lower():
+                if store_data['hasStates'] is False:
+                    self.out.state = self.out.country
+                    for store in store_data['store']:
                         self.get_store_data(scraper, store, store_data)
+                else:
+                    for state in store_data['state']:
+                        self.out.state = state['name']
+                        for store in state['store']:
+                            self.get_store_data(scraper, store, store_data)
 
     def get_store_data(self, scraper, store, store_data, has_state=True):
-        self.out.city = store['address']['city']
-        self.out.store_name = store['name']
-        self.out.address_line_1 = store['address']['address1']
-        self.out.address_line_2 = store['address']['address2']
+        self.out.city = html.unescape(store['address']['city'])
+        self.out.store_name = html.unescape(store['name'])
+        self.out.address_line_1 = html.unescape(store['address']['address1'])
+        self.out.address_line_2 = html.unescape(store['address']['address2'])
         self.out.phone = store['telephone']
         self.out.url = self.__util_url_from_slug(store_data['locale'],
                                                  self.root_map[store_data['locale']],
@@ -116,12 +114,12 @@ class Applestore(Runner):
         if not has_state:
             self.out.state_local = self.out.state
         else:
-            self.out.state_local = local_store['address']['stateName']
+            self.out.state_local = html.unescape(local_store['address']['stateName'])
 
-        self.out.store_name_local = local_store['name']
-        self.out.address_line_1_local = local_store['address']['address1']
-        self.out.address_line_2_local = local_store['address']['address2']
-        self.out.city_local = local_store['address']['city']
+        self.out.store_name_local = html.unescape(local_store['name'])
+        self.out.address_line_1_local = html.unescape(local_store['address']['address1'])
+        self.out.address_line_2_local = html.unescape(local_store['address']['address2'])
+        self.out.city_local = html.unescape(local_store['address']['city'])
         self.out.postal_code = local_store['address']['postal']
         try:
             self.out.message_local = html.unescape(local_store['message'])
@@ -137,16 +135,17 @@ class Applestore(Runner):
         for local_days in local_store_hours['days']:
             formatted_day = ZenScraper().utils.strings.remove_non_digits(
                 self.__remove_unwanted_char(
-                    local_days['formattedDayDateA11y']
+                    html.unescape(local_days['formattedDayDateA11y'])
                 )
             )
-            if len(str(formatted_day)) != len(str(datetime.now().day)):
-                formatted_day = formatted_day[1:]
-
+            formatted_day = formatted_day.strip()
+            if len(str(formatted_day)) > 1:
+                if (len(str(formatted_day)) != len(str(datetime.now().day))) or (int(formatted_day) > (datetime.now().day + 7)):
+                    formatted_day = formatted_day[1:]
             cur_day = int(formatted_day)
             temp_year = datetime.now().year
             temp_month = datetime.now().month
-            temp_date = datetime.strptime(f'{temp_year} {temp_month} {formatted_day}', '%Y %m %d')
+            temp_date = datetime.strptime(f'{temp_year} {temp_month} {cur_day}', '%Y %m %d')
 
             if cur_day < past_day:
                 temp_date = temp_date + relativedelta(months=1)

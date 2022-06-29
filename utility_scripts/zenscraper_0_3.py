@@ -17,6 +17,12 @@ import requests
 import lxml.html
 from lxml import etree
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+import selenium
+from selenium import webdriver
+from selenium.webdriver.common.by import By as SeleniumBy
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 sys.path.append('../../scripts')
@@ -98,6 +104,7 @@ class ZenScraper:
                 'doc': doc},
         }
         return output_dict[by_mode.value]
+
 
     def get(self, url, sleep_seconds=None):
         """
@@ -538,7 +545,7 @@ class _UtilFunctionsFiles:
 class _UtilFunctionsJSON:
 
     @staticmethod
-    def save_json(url='', jsondir='', file_name='data.json'):
+    def save_json(url='', jsondir='', file_name='data.json', sleep_time=None):
         """
         :param url: url of the html page you want to save
         :param jsondir: directory on where to save the json
@@ -546,7 +553,11 @@ class _UtilFunctionsJSON:
         :return:
         """
         _UtilFunctions().files.create_directory(jsondir)
-        sold_items = requests.get(url)
+        if sleep_time is None:
+            req = RequestsWrapper()
+        else:
+            req = RequestsWrapper(sleep_time=sleep_time)
+        sold_items = req.get(url)
         Path(f'{jsondir}/{file_name}.json').write_bytes(sold_items.content)
 
     @staticmethod
@@ -898,6 +909,9 @@ class _DataStream:  # pylint: disable=too-few-public-methods
 
 
 class _SeleniumUtils:  # pylint: disable=too-few-public-methods
+    # from selenium.common.exceptions import NoSuchElementException
+
+
 
     def wait_for_page_load(self, driver, wait_time=30):
         """
@@ -924,16 +938,16 @@ class _SeleniumUtils:  # pylint: disable=too-few-public-methods
             yield False
         return True
 
-    # @staticmethod
-    # def wait_for_element(driver, xpath, wait_time=30):
-    #     """
-    #     :param driver: Selenium webdriver
-    #     :param wait_time: wait time in seconds
-    #     :param xpath: xpath expression to wait
-    #     :return:
-    #     """
-    #     try:
-    #         driver.support.ui.WebDriverWait(driver, wait_time).until(
-    #         driver.support.expected_conditions.presence_of_element_located((By.XPATH, xpath)))
-    #     except Exception as e:
-    #         print(e)
+    def wait_for_element(self, driver, xpath, wait_time=30):
+        """
+        :param driver: Selenium webdriver
+        :param wait_time: wait time in seconds
+        :param xpath: xpath expression to wait
+        :return:
+        """
+        try:
+            WebDriverWait(driver, wait_time).until(
+            EC.presence_of_element_located((self.SeleniumBy.XPATH, xpath)))
+        except Exception as e:
+            print(e)
+

@@ -21,8 +21,8 @@ from ms_projects.utility_scripts.zenscraper_0_3 import ZenScraper
 
 class Redfin(Runner):
     """Collect data from website"""
-    def __init__(self, argv):
-        super().__init__(argv, output_prefix='redfin', output_subdir="raw", output_type='csv')
+    def __init__(self, argv, name, headers):
+        super().__init__(argv, output_prefix=name, output_subdir="raw", output_type='csv')
         self.datapoints = {
             "search_api": "https://www.redfin.com/stingray/do/location-autocomplete?location={}",
             "web_search": "https://www.redfin.com/county/{}",
@@ -30,52 +30,16 @@ class Redfin(Runner):
             "out": ['FetchDate', 'Website', 'Type', 'State', 'County', 'Total Properties', 'With 3D Tours'],
         }
         self.parser = squ.get_parser()
-        self.out = Row(self.datapoints['out'])
-        self.fetch_out = []
+        self.out = Row(headers)
         self.fetch_date = datetime.now().strftime('%m/%d/%Y')
-        self.search_for = ''
-        self.state_code = ''
-        self.zs = ZenScraper()
-
-    def get_raw(self, **kwargs):
-        """ Get raw data from source"""
-        input_path = f'{self.outdir}/input/County_List.xlsx'
-        to_find_data = pd.read_excel(os.path.abspath(input_path), sheet_name=0)
-        state_name_list = to_find_data['State_NAME'].to_list()
-        county_name_list = to_find_data['County_NAME'].to_list()
-
-        for count,val in enumerate(county_name_list):
-
-            if self.zs.utils.parse.is_partial_run(self.parser):
-                if count > 2:
-                    self.fetch_out = self.zs.utils.parse.end_partial_run(self.fetch_out, self.out.header())
-                    break
-
-            state_name = state_name_list[count]
-            self.search_for = val
-
-            self.state_code, county_code = self.get_county_code(state_name)
-
-            with SW.get_driver() as driver:
-                if county_code != '':
-                    self.out.objectkey = self.out.compute_key()
-
-                    all_homes, home_with_tour = self.browse_web(driver, county_code)
-                    self.fetch_out.append([self.fetch_date, 'Redfin', 'Buy',
-                                          self.state_code, self.search_for, self.filter_result(all_homes),
-                                          self.filter_result(home_with_tour), self.out.values()[-1]])
-
-                    all_homes, home_with_tour = self.browse_web(driver, county_code, is_for_rent=True)
-                    self.fetch_out.append([self.fetch_date, 'Redfin', 'Rent',
-                                          self.state_code, self.search_for, self.filter_result(all_homes),
-                                          self.filter_result(home_with_tour), self.out.values()[-1]])
-        return self.fetch_out
+        self.scraper = ZenScraper()
 
 
     @staticmethod
     def filter_result(result):
         result = result.lower().replace('see', '')\
             .replace('homes', '')\
+            .replace('home', '')\
             .replace('no results', '0').strip()
         return result
 
@@ -132,7 +96,7 @@ class Redfin(Runner):
             continue
 
 
-    def get_county_code(self, state_name):
+    def get_county_code(self, state_name, search_for):
         try:
             state_code = ''
             with open(f'{self.outdir}/input/states_hash.json', encoding='utf-8') as f:
@@ -141,12 +105,12 @@ class Redfin(Runner):
                         state_code = k
 
             if state_code != '':
-                api_search_for = self.search_for.lower().replace(' ','%20')
+                api_search_for = search_for.lower().replace(' ','%20')
                 response = ZenScraper().get(self.datapoints['search_api'].format(api_search_for))
                 response_text = response.content.decode('utf-8')
-                print(f'/{state_code}/{self.search_for.replace(" ", "-")}')
-                if f'/{state_code}/{self.search_for.replace(" ", "-")}' in response_text:
-                    suffix = f'/{state_code}/{self.search_for.replace(" ", "-")}'
+                print(f'/{state_code}/{search_for.replace(" ", "-")}')
+                if f'/{state_code}/{search_for.replace(" ", "-")}' in response_text:
+                    suffix = f'/{state_code}/{search_for.replace(" ", "-")}'
                     county_code = re.search(f'/county/(.*?){suffix}', response_text).group(1)
                     county_code = county_code.split('/')[-1]
                     return state_code, county_code

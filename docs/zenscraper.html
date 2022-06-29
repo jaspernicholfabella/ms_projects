@@ -1,0 +1,1543 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="content-type" content="text/html;charset=utf-8">
+  <title>zenscraper.py</title>
+  <link rel="stylesheet" href="pycco.css">
+</head>
+<body>
+<div id='container'>
+  <div id="background"></div>
+  <div class='section'>
+    <div class='docs'><h1>zenscraper.py</h1></div>
+  </div>
+  <div class='clearall'>
+  <div class='section' id='section-0'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-0'>#</a>
+      </div>
+      <p>Zenscraper Python Library v 0.2</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">enum</span> <span class="kn">import</span> <span class="n">Enum</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">re</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">import</span> <span class="nn">random</span>
+<span class="kn">import</span> <span class="nn">logging</span>
+<span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">bs4</span> <span class="kn">import</span> <span class="n">BeautifulSoup</span>
+<span class="kn">import</span> <span class="nn">requests</span>
+<span class="kn">import</span> <span class="nn">lxml.html</span>
+<span class="kn">from</span> <span class="nn">lxml</span> <span class="kn">import</span> <span class="n">etree</span>
+<span class="kn">from</span> <span class="nn">requests.packages.urllib3.exceptions</span> <span class="kn">import</span> <span class="n">InsecureRequestWarning</span>
+<span class="n">requests</span><span class="o">.</span><span class="n">packages</span><span class="o">.</span><span class="n">urllib3</span><span class="o">.</span><span class="n">disable_warnings</span><span class="p">(</span><span class="n">InsecureRequestWarning</span><span class="p">)</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;../../scripts&#39;</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">pyersq.requests_wrapper</span> <span class="kn">import</span> <span class="n">RequestsWrapper</span>
+
+<span class="n">logging</span><span class="o">.</span><span class="n">basicConfig</span><span class="p">()</span>
+<span class="n">logger</span> <span class="o">=</span> <span class="n">logging</span><span class="o">.</span><span class="n">getLogger</span><span class="p">(</span><span class="vm">__name__</span><span class="p">)</span>
+<span class="n">logger</span><span class="o">.</span><span class="n">setLevel</span><span class="p">(</span><span class="n">logging</span><span class="o">.</span><span class="n">WARNING</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-1'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-1'>#</a>
+      </div>
+      <p>zenscraper version 0.2b
+ZenScraper , stealth scraping that follows selenium rules.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre><span class="k">class</span> <span class="nc">ZenScraper</span><span class="p">:</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-2'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-2'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="n">doc</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="n">response</span> <span class="o">=</span> <span class="kc">None</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-3'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-3'>#</a>
+      </div>
+      <p>find multiple elements in the class</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__find_elements_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">err_message</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">xpath</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-4'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-4'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">try</span><span class="p">:</span>
+            <span class="n">element_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">if</span> <span class="n">doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">doc</span>
+            <span class="n">elements</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="n">xpath</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+                <span class="n">element_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ZenElement</span><span class="p">(</span><span class="n">element</span><span class="p">))</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">element_list</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;element list generated&#39;</span><span class="p">)</span> <span class="c1">#</span>
+                <span class="k">return</span> <span class="n">element_list</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;no element list found&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathEvalError</span><span class="p">,</span>
+                <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathError</span><span class="p">)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">err_message</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="c1"># pylint: disable=logging-fstring-interpolation</span>
+            <span class="k">return</span> <span class="kc">None</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-5'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-5'>#</a>
+      </div>
+      <p>find single element from the class</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__find_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">err_message</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">xpath</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-6'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-6'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">doc</span>
+            <span class="n">element</span> <span class="o">=</span> <span class="n">doc</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="n">xpath</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">ZenElement</span><span class="p">(</span><span class="n">element</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">get_tag</span><span class="p">()</span><span class="si">}</span><span class="s1"> element found&#39;</span><span class="p">)</span> <span class="c1"># pylint: disable=logging-fstring-interpolation</span>
+            <span class="k">return</span> <span class="n">ZenElement</span><span class="p">(</span><span class="n">element</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathEvalError</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathError</span><span class="p">,</span>
+                <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">Error</span><span class="p">)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="n">err_message</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">err</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span> <span class="c1"># pylint: disable=logging-fstring-interpolation</span>
+            <span class="k">return</span> <span class="kc">None</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-7'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-7'>#</a>
+      </div>
+      <pre><code>    :param url: destination url to get document body
+    :return:
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__return_dict_values</span><span class="p">(</span><span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;node()&quot;</span><span class="p">):</span>
+        <span class="n">output_dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="mi">1</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="s2">&quot;&lt;Error: id cannot be found on the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;//node()[@id=&quot;</span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s1">&quot;]&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;doc&#39;</span><span class="p">:</span> <span class="n">doc</span><span class="p">},</span>
+            <span class="mi">2</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="s2">&quot;&lt;Error: element cannot be found on the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="n">to_search</span><span class="p">,</span>
+                <span class="s1">&#39;doc&#39;</span><span class="p">:</span> <span class="n">doc</span><span class="p">},</span>
+            <span class="mi">3</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;&lt;Error: no element that contains </span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s2"> in the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;//</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s1">[normalize-space(text()) = &quot;</span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s1">&quot;]&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;doc&#39;</span><span class="p">:</span> <span class="n">doc</span><span class="p">},</span>
+            <span class="mi">4</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;&lt;Error: no element that contains </span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s2"> in the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;//</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s1">[contains(text(), &quot;</span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s1">&quot;)]&#39;</span><span class="p">,</span>
+                <span class="s1">&#39;doc&#39;</span><span class="p">:</span> <span class="n">doc</span><span class="p">},</span>
+            <span class="mi">6</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="s2">&quot;&lt;Error: tagname cannot be found on the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;//</span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;doc&#39;</span><span class="p">:</span> <span class="n">doc</span><span class="p">},</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">output_dict</span><span class="p">[</span><span class="n">by_mode</span><span class="o">.</span><span class="n">value</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">get</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">url</span><span class="p">,</span> <span class="n">sleep_seconds</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-8'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-8'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;GET request on </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sleep_seconds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sleep_seconds</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="n">RequestsWrapper</span><span class="p">()</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">sleep_seconds</span><span class="o">=</span><span class="n">sleep_seconds</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">response</span> <span class="o">=</span> <span class="n">response</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">doc</span> <span class="o">=</span> <span class="n">lxml</span><span class="o">.</span><span class="n">html</span><span class="o">.</span><span class="n">fromstring</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">content</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-9'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-9'>#</a>
+      </div>
+      <pre><code>    :param url: url to download file
+    :param destination_path: directory with file name to store image data
+    :return:
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">download_file</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">destination_path</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-10'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-10'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">req</span> <span class="o">=</span> <span class="n">RequestsWrapper</span><span class="p">()</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;downloading: </span><span class="si">{</span><span class="n">url</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span> <span class="c1"># pylint: disable=logging-fstring-interpolation</span>
+        <span class="n">filename</span> <span class="o">=</span> <span class="n">url</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;/&quot;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">destination_path</span> <span class="o">==</span> <span class="s2">&quot;&quot;</span><span class="p">:</span>
+            <span class="n">file_destination</span> <span class="o">=</span> <span class="n">filename</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">UtilFunctions</span><span class="p">()</span><span class="o">.</span><span class="n">create_directory</span><span class="p">(</span><span class="n">destination_path</span><span class="p">)</span>
+            <span class="n">file_destination</span> <span class="o">=</span> <span class="sa">f</span><span class="s2">&quot;</span><span class="si">{</span><span class="n">destination_path</span><span class="si">}</span><span class="s2">/</span><span class="si">{</span><span class="n">filename</span><span class="si">}</span><span class="s2">&quot;</span>
+
+        <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">file_destination</span><span class="p">,</span> <span class="s2">&quot;wb&quot;</span><span class="p">)</span> <span class="k">as</span> <span class="n">out_file</span><span class="p">:</span>
+            <span class="n">shutil</span><span class="o">.</span><span class="n">copyfileobj</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">raw</span><span class="p">,</span> <span class="n">out_file</span><span class="p">)</span>
+        <span class="k">del</span> <span class="n">response</span>
+
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;error on file download&#39;</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-11'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-11'>#</a>
+      </div>
+      <pre><code>    Getting HTMl Table from &lt;table&gt; tag inside an html
+    :param driver: selenium driver to scrape table data
+    :param table_index: index of the table to be sraped
+    :param just_header: return an array of table header
+    :param with_header: boolean if table header will be included in the scrape
+    :return: list of dict if with_header == True, list of list if with_header == False
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_html_table</span><span class="p">(</span><span class="n">driver</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">table_index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">just_header</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">with_header</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span> <span class="c1">#pylint: disable=too-many-locals,too-many-branches</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-12'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-12'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;scraping HTML table from page_source&#39;</span><span class="p">)</span>
+            <span class="n">soup</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="n">driver</span><span class="o">.</span><span class="n">page_source</span><span class="p">,</span> <span class="s1">&#39;lxml&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">tables</span> <span class="o">=</span> <span class="n">soup</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;table&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tables</span> <span class="o">=</span> <span class="n">soup</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;table&#39;</span><span class="p">)</span>
+
+            <span class="n">table_body</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="n">table_index</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;tbody&#39;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">just_header</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;scraping the header of the HTML table&#39;</span><span class="p">)</span>
+                <span class="n">table_header</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="n">table_index</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;thead&#39;</span><span class="p">)</span>
+                <span class="n">header</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">table_header</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;tr&#39;</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">count</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;th&#39;</span><span class="p">)):</span>
+                        <span class="n">val</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">count</span><span class="p">))</span>
+                            <span class="k">continue</span>
+                        <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                    <span class="k">return</span> <span class="n">header</span>
+
+            <span class="k">if</span> <span class="n">with_header</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Scraping header of the HTML table with content&#39;</span><span class="p">)</span>
+                <span class="n">table_header</span> <span class="o">=</span> <span class="n">tables</span><span class="p">[</span><span class="n">table_index</span><span class="p">]</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;thead&#39;</span><span class="p">)</span>
+                <span class="n">header</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="n">table_data</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">table_header</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;tr&#39;</span><span class="p">):</span>
+                    <span class="k">for</span> <span class="n">count</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;th&#39;</span><span class="p">)):</span>
+                        <span class="n">val</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">val</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                            <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">count</span><span class="p">))</span>
+                            <span class="k">continue</span>
+                        <span class="n">header</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+
+                <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">table_body</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;tr&#39;</span><span class="p">):</span>
+                    <span class="n">data</span> <span class="o">=</span> <span class="p">{}</span>
+                    <span class="k">for</span> <span class="n">count</span><span class="p">,</span> <span class="n">col</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">row</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;td&#39;</span><span class="p">)):</span>
+                        <span class="n">val</span> <span class="o">=</span> <span class="n">col</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+                        <span class="n">data</span><span class="o">.</span><span class="n">update</span><span class="p">({</span><span class="n">header</span><span class="p">[</span><span class="n">count</span><span class="p">]:</span><span class="n">val</span><span class="p">})</span>
+                    <span class="n">table_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">table_data</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Scraping the body of the HTML table&#39;</span><span class="p">)</span>
+            <span class="n">table_data</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="n">table_body</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;tr&#39;</span><span class="p">):</span>
+                <span class="n">data</span> <span class="o">=</span> <span class="p">[]</span>
+                <span class="k">for</span> <span class="n">col</span> <span class="ow">in</span> <span class="n">row</span><span class="o">.</span><span class="n">find_all</span><span class="p">(</span><span class="s1">&#39;td&#39;</span><span class="p">):</span>
+                    <span class="n">data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">col</span><span class="o">.</span><span class="n">text</span><span class="o">.</span><span class="n">strip</span><span class="p">())</span>
+                <span class="n">table_data</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">table_data</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span> <span class="c1">#pylint: disable=broad-except</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;HTML Table scraping failed!!!&#39;</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-13'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-13'>#</a>
+      </div>
+      <pre><code>    :param by_mode: By Enumerator to search for e.g. XPATH, ID, CLASSNAME
+    :param tosearch: the string to search
+    :param doc: document body
+    :param tag: works best with LINK_TEXT, PARTIAL_LINK_TEXT
+    :return: ZenElement Object
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">find_elements</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;node()&quot;</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-14'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-14'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">output_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__return_dict_values</span><span class="p">(</span><span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__find_elements_list</span><span class="p">(</span><span class="o">**</span><span class="n">output_dict</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-15'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-15'>#</a>
+      </div>
+      <pre><code>    :param by: By Enumerator to search for e.g. XPATH, ID, CLASSNAME
+    :param tosearch: the string to search
+    :param doc: document body
+    :param tag: works best with LINK_TEXT, PARTIAL_LINK_TEXT
+    :return: ZenElement Object
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">find_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;node()&quot;</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-16'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-16'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">output_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__return_dict_values</span><span class="p">(</span><span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">doc</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__find_element</span><span class="p">(</span><span class="o">**</span><span class="n">output_dict</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-17'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-17'>#</a>
+      </div>
+      <pre><code>    Print the HTMl file on the console.
+    :return: HTML File as a String
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">print_html</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">is_print</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-18'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-18'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Printing HTML&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">is_print</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">,</span> <span class="n">pretty_print</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">doc</span><span class="p">,</span> <span class="n">pretty_print</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-19'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-19'>#</a>
+      </div>
+      <pre><code>    Print status_code on console
+    :return: return status_code as an integer
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">status_code</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-20'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-20'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-21'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-21'>#</a>
+      </div>
+      <pre><code>    :param url: url of the link to check
+    :return: check if link exists
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">check_link</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">sleep_seconds</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-22'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-22'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Checking link </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sleep_seconds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sleep_seconds</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="n">RequestsWrapper</span><span class="p">()</span>
+        <span class="n">response</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">sleep_seconds</span><span class="o">=</span><span class="n">sleep_seconds</span><span class="p">)</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="n">response</span><span class="o">.</span><span class="n">status_code</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">response</span><span class="o">.</span><span class="n">status_code</span> <span class="o">==</span> <span class="mi">200</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-23'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-23'>#</a>
+      </div>
+      <pre><code>    get the current URL Link
+    :return:
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">show_url</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-24'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-24'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">response</span><span class="o">.</span><span class="n">url</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-25'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-25'>#</a>
+      </div>
+      <pre><code>    :param url: url to get json
+    :return: json file
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">get_json</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">sleep_seconds</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-26'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-26'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Get JSON file from </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">url</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">sleep_seconds</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">sleep_seconds</span><span class="o">=</span><span class="n">random</span><span class="o">.</span><span class="n">randint</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">)</span>
+        <span class="n">req</span> <span class="o">=</span> <span class="n">RequestsWrapper</span><span class="p">()</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">req</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">url</span><span class="p">,</span> <span class="n">sleep_seconds</span><span class="o">=</span><span class="n">sleep_seconds</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">res</span><span class="o">.</span><span class="n">json</span><span class="p">()</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-27'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-27'>#</a>
+      </div>
+      <pre><code>    :param doc: response document object
+    :param index: index on the &lt;script/&gt; tag
+    :return: return a json dictionary
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_json_from_html_script_tag</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">doc</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">to_add_or_remove</span> <span class="o">=</span> <span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-28'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-28'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">json_object</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;getting json from html script&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">doc</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">doc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">doc</span>
+
+        <span class="n">soup</span> <span class="o">=</span> <span class="n">BeautifulSoup</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">print_html</span><span class="p">(</span><span class="n">is_print</span><span class="o">=</span><span class="kc">False</span><span class="p">),</span> <span class="s1">&#39;lxml&#39;</span><span class="p">)</span>
+        <span class="n">res</span> <span class="o">=</span> <span class="n">soup</span><span class="o">.</span><span class="n">find</span><span class="p">(</span><span class="s1">&#39;script&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">json_object</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="n">res</span><span class="o">.</span><span class="n">contents</span><span class="p">[</span><span class="n">index</span><span class="p">])</span>
+            <span class="k">return</span> <span class="n">json_object</span>
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span> <span class="c1">#pylint: disable=broad-except</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="n">bad_json</span> <span class="o">=</span> <span class="n">res</span><span class="o">.</span><span class="n">contents</span><span class="p">[</span><span class="n">index</span><span class="p">]</span>
+            <span class="n">improved_json</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;&quot;\s*$&#39;</span><span class="p">,</span> <span class="s1">&#39;&quot;,&#39;</span><span class="p">,</span> <span class="n">bad_json</span><span class="p">,</span> <span class="n">flags</span><span class="o">=</span><span class="n">re</span><span class="o">.</span><span class="n">MULTILINE</span><span class="p">)</span>
+            <span class="n">improved_json</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;&quot;</span><span class="se">\\</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="n">improved_json</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;</span><span class="se">\&#39;</span><span class="s2">&quot;</span><span class="p">,</span> <span class="s1">&#39;&quot;&#39;</span><span class="p">)</span>
+            <span class="n">json_object</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__bruteforce_json_fix</span><span class="p">(</span><span class="n">improved_json</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">json_object</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-29'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-29'>#</a>
+      </div>
+      <p>ZenElement , work like selenium Element Object</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__bruteforce_json_fix</span><span class="p">(</span><span class="n">improved_json</span><span class="p">,</span> <span class="n">retry_count</span><span class="o">=</span><span class="mi">20</span><span class="p">):</span>
+        <span class="k">def</span> <span class="nf">add_strings</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">improved_json</span><span class="p">,</span> <span class="n">retry_count</span><span class="p">,</span> <span class="n">prefix_to_increment</span><span class="o">=</span><span class="s1">&#39;}]&#39;</span><span class="p">):</span>
+            <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">retry_count</span><span class="p">):</span>
+                <span class="n">suffix</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+                <span class="k">for</span> <span class="n">j</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">retry_count</span><span class="p">):</span>
+                    <span class="k">try</span><span class="p">:</span>
+                        <span class="n">suffix</span> <span class="o">+=</span> <span class="s1">&#39;}&#39;</span>
+                        <span class="n">json_object</span> <span class="o">=</span> <span class="n">json</span><span class="o">.</span><span class="n">loads</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">improved_json</span><span class="si">}{</span><span class="n">prefix</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;json bruteforce success.&#39;</span><span class="p">)</span>
+                        <span class="k">return</span> <span class="n">json_object</span>
+                    <span class="k">except</span> <span class="ne">Exception</span><span class="p">:</span> <span class="c1">#pylint: disable=broad-except</span>
+                        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;fix_type #</span><span class="si">{</span><span class="n">i</span><span class="si">}</span><span class="s1"> adding </span><span class="si">{</span><span class="n">prefix</span><span class="si">}{</span><span class="n">suffix</span><span class="si">}</span><span class="s1">: retrying </span><span class="si">{</span><span class="n">j</span><span class="si">}</span><span class="s1"> times.&#39;</span><span class="p">)</span> <span class="c1">#pylint: disable=logging-fstring-interpolation</span>
+                <span class="n">prefix</span> <span class="o">+=</span> <span class="n">prefix_to_increment</span>
+            <span class="k">return</span> <span class="kc">None</span>
+
+        <span class="k">for</span> <span class="n">prefix_to_increment</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;}]&#39;</span><span class="p">,</span> <span class="s1">&#39;]&#39;</span><span class="p">]:</span>
+            <span class="k">for</span> <span class="n">prefix</span> <span class="ow">in</span> <span class="p">[</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="s1">&#39;&quot;&#39;</span><span class="p">,</span> <span class="s1">&#39;&quot;}&#39;</span><span class="p">]:</span>
+                <span class="n">json_object</span> <span class="o">=</span> <span class="n">add_strings</span><span class="p">(</span><span class="n">prefix</span><span class="p">,</span> <span class="n">improved_json</span><span class="p">,</span> <span class="n">retry_count</span><span class="p">,</span>
+                                          <span class="n">prefix_to_increment</span><span class="o">=</span><span class="n">prefix_to_increment</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">json_object</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+                    <span class="k">return</span> <span class="n">json_object</span>
+        <span class="k">return</span> <span class="kc">None</span>
+
+<span class="k">class</span> <span class="nc">ZenElement</span><span class="p">:</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-30'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-30'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="n">element</span> <span class="o">=</span> <span class="kc">None</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-31'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-31'>#</a>
+      </div>
+      <p>Init ZenElement</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">element</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-32'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-32'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="bp">self</span><span class="o">.</span><span class="n">element</span> <span class="o">=</span> <span class="n">element</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-33'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-33'>#</a>
+      </div>
+      <p>Find Elements</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__find_elements_list</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">err_message</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">xpath</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-34'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-34'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">try</span><span class="p">:</span>
+            <span class="n">element_list</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">elements</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="n">xpath</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">element</span> <span class="ow">in</span> <span class="n">elements</span><span class="p">:</span>
+                <span class="n">element_list</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ZenElement</span><span class="p">(</span><span class="n">element</span><span class="p">))</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">element_list</span><span class="p">)</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;element list generated&#39;</span><span class="p">)</span>
+                <span class="k">return</span> <span class="n">element_list</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">warning</span><span class="p">(</span><span class="s1">&#39;no element list generated&#39;</span><span class="p">)</span>
+            <span class="k">return</span> <span class="p">[]</span>
+
+        <span class="k">except</span> <span class="p">(</span><span class="ne">IndexError</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathEvalError</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathError</span><span class="p">,</span>
+                <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">Error</span><span class="p">)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err_message</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-35'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-35'>#</a>
+      </div>
+      <p>Find ELement</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__find_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">err_message</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">xpath</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-36'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-36'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="k">try</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">ZenElement</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="n">xpath</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span><span class="o">.</span><span class="n">get_tag</span><span class="p">()</span><span class="si">}</span><span class="s1"> element found&#39;</span><span class="p">)</span> <span class="c1"># pylint: disable=logging-fstring-interpolation</span>
+            <span class="k">return</span> <span class="n">ZenElement</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="o">.</span><span class="n">xpath</span><span class="p">(</span><span class="n">xpath</span><span class="p">)[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathEvalError</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathError</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">Error</span><span class="p">)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err_message</span><span class="p">)</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-37'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-37'>#</a>
+      </div>
+      <pre><code>    :param inner_text_filter: you can add an array if you want
+    ot add additional filter for your inner_text
+    :return: filtered string
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="nd">@staticmethod</span>
+    <span class="k">def</span> <span class="nf">__return_dict_values</span><span class="p">(</span><span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;node()&quot;</span><span class="p">):</span>
+        <span class="n">output_dict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="mi">1</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="s2">&quot;&lt;Error: id cannot be found on the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;//node()[@id=&quot;</span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s1">&quot;]&#39;</span><span class="p">},</span>
+            <span class="mi">2</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="s2">&quot;&lt;Error: element cannot be found on the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="n">to_search</span><span class="p">},</span>
+            <span class="mi">3</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;&lt;Error: no element that contains </span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s2"> in the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;//</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s1">[normalize-space(text()) = &quot;</span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s1">&quot;]&#39;</span><span class="p">},</span>
+            <span class="mi">4</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;&lt;Error: no element that contains </span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s2"> in the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;//</span><span class="si">{</span><span class="n">tag</span><span class="si">}</span><span class="s1">[contains(text(), &quot;</span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s1">&quot;)]&#39;</span><span class="p">},</span>
+            <span class="mi">6</span><span class="p">:</span> <span class="p">{</span><span class="s1">&#39;err_message&#39;</span><span class="p">:</span> <span class="s2">&quot;&lt;Error: tagname cannot be found on the html&gt;&quot;</span><span class="p">,</span>
+                <span class="s1">&#39;xpath&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s2">&quot;//</span><span class="si">{</span><span class="n">to_search</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">},</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">output_dict</span><span class="p">[</span><span class="n">by_mode</span><span class="o">.</span><span class="n">value</span><span class="p">]</span>
+
+    <span class="k">def</span> <span class="nf">__inner_text</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inner_text_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-38'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-38'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">element_str</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__to_string</span><span class="p">()</span>
+        <span class="n">stripped</span> <span class="o">=</span> <span class="n">UtilFunctions</span><span class="p">()</span><span class="o">.</span><span class="n">strip_html</span><span class="p">(</span><span class="n">element_str</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">inner_text_filter</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">rep</span> <span class="ow">in</span> <span class="n">inner_text_filter</span><span class="p">:</span>
+                <span class="n">stripped</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="n">rep</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+        <span class="n">stripped</span> <span class="o">=</span> <span class="n">stripped</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">return</span> <span class="n">stripped</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-39'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-39'>#</a>
+      </div>
+      <pre><code>    Get the innerHTML of an Element, and convert it to string
+    :return: string
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">__to_string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-40'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-40'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">string</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">etree</span><span class="o">.</span><span class="n">tostring</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="p">))</span>
+        <span class="n">string</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s2">&quot;b&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">string</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-41'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-41'>#</a>
+      </div>
+      <pre><code>    :param by_mode: By Enumerator the guide on what to search e.g. By.XPATH, By.TAG_NAME
+    :param to_search: tosearch on the document body
+    :param tag: parent element tag , default node(), means all element
+    :return: List of ZenElement Objects
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">find_elements</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;node()&quot;</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-42'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-42'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">output_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__return_dict_values</span><span class="p">(</span><span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__find_elements_list</span><span class="p">(</span><span class="o">**</span><span class="n">output_dict</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-43'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-43'>#</a>
+      </div>
+      <pre><code>    :param by_mode: By Enumerator the guide on what to search e.g. By.XPATH, By.TAG_NAME
+    :param to_search: tosearch on the document body
+    :param tag: parent element tag , default node(), means all element
+    :return: ZenElement Object
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">find_element</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">tag</span><span class="o">=</span><span class="s2">&quot;node()&quot;</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-44'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-44'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">output_dict</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">__return_dict_values</span><span class="p">(</span><span class="n">by_mode</span><span class="p">,</span> <span class="n">to_search</span><span class="p">,</span> <span class="n">tag</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__find_element</span><span class="p">(</span><span class="o">**</span><span class="n">output_dict</span><span class="p">)</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-45'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-45'>#</a>
+      </div>
+      <pre><code>    :param attribute: attribute like innerText, innerHTML,
+</code></pre>
+<p>class, image, alt, title etc.
+        :param inner_text_filter: if you want to filter your string ,
+only work on innerText attribute
+        :return: string</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_attribute</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">attribute</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">,</span> <span class="n">inner_text_filter</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-46'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-46'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Get Element Attribute </span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">attribute</span><span class="p">)</span>
+        <span class="n">err_message</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s2">&quot;&lt;Error: attribute in the element cannot be found, try different attribute&gt;&quot;</span>
+        <span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">attribute</span> <span class="o">==</span> <span class="s1">&#39;innerText&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__inner_text</span><span class="p">(</span><span class="n">inner_text_filter</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">attribute</span> <span class="o">==</span> <span class="s1">&#39;innerHTML&#39;</span><span class="p">:</span>
+                <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">__to_string</span><span class="p">()</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="o">.</span><span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attribute</span><span class="p">)</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err_message</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="k">return</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="o">.</span><span class="n">attrib</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="n">attribute</span><span class="p">))</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathEvalError</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathError</span><span class="p">)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err_message</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-47'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-47'>#</a>
+      </div>
+      <pre><code>    get the current tag of the element
+    :return:
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_tag</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-48'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-48'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>        <span class="n">logger</span><span class="o">.</span><span class="n">info</span><span class="p">(</span><span class="s1">&#39;Get Element Tag&#39;</span><span class="p">)</span>
+        <span class="n">err_message</span> <span class="o">=</span> <span class="s2">&quot;&lt;Error: There is no Text inside the Element&gt;&quot;</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">element</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err_message</span><span class="p">)</span>
+                <span class="k">return</span> <span class="kc">None</span>
+
+            <span class="n">string</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">element</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;Element&quot;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="n">string</span> <span class="o">=</span> <span class="n">string</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s2">&quot;at&quot;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">string</span>
+        <span class="k">except</span> <span class="p">(</span><span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathEvalError</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">Error</span><span class="p">,</span> <span class="n">lxml</span><span class="o">.</span><span class="n">etree</span><span class="o">.</span><span class="n">XPathError</span><span class="p">)</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+            <span class="n">logging</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="n">err_message</span><span class="p">)</span>
+            <span class="k">return</span> <span class="kc">None</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-49'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-49'>#</a>
+      </div>
+      <p>get text inside the element , use get_attribute(&lsquo;innerText&rsquo;)</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>    <span class="k">def</span> <span class="nf">get_text</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-50'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-50'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre>         <span class="k">if</span> <span class="n">you</span> <span class="n">want</span> <span class="nb">all</span> <span class="n">the</span> <span class="n">text</span> <span class="n">inside</span> <span class="n">the</span> <span class="n">element</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        logger.info(&#39;Get text from element&#39;)</span>
+<span class="s2">        err_message = &quot;&lt;Error: There is no text inside this Element&gt;&quot;</span>
+<span class="s2">        try:</span>
+<span class="s2">            if self.element.text is None:</span>
+<span class="s2">                logging.error(err_message)</span>
+<span class="s2">                return None</span>
+
+<span class="s2">            return self.element.text</span>
+<span class="s2">        except (lxml.etree.XPathEvalError, lxml.etree.Error, lxml.etree.XPathError) as err:</span>
+<span class="s2">            logging.error(err)</span>
+<span class="s2">            logging.error(err_message)</span>
+<span class="s2">            return None</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    def get_parent(self):</span>
+<span class="s2">        &quot;&quot;&quot;</span><span class="n">get</span> <span class="n">the</span> <span class="n">parent</span> <span class="n">element</span> <span class="n">of</span> <span class="n">the</span> <span class="n">current</span> <span class="n">element</span><span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">        logger.info(&#39;Getting Element Parent&#39;)</span>
+<span class="s2">        return ZenElement(self.element.xpath(&quot;./parent::node()&quot;)[0])</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    def get_children(self, tagname=&quot;*&quot;):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        logger.info(&#39;Getting Element Children&#39;)</span>
+<span class="s2">        return self.__find_elements_list(</span>
+<span class="s2">            err_message=&quot;&lt;Error: No Children Inside the element&gt;&quot;,</span>
+<span class="s2">            xpath=f&quot;./children::</span><span class="si">{tagname}</span><span class="s2">&quot;,</span>
+<span class="s2">        )</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">class By(Enum):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    ID = 1</span>
+<span class="s2">    XPATH = 2</span>
+<span class="s2">    LINK_TEXT = 3</span>
+<span class="s2">    PARTIAL_LINK_TEXT = 4</span>
+<span class="s2">    NAME = 5</span>
+<span class="s2">    TAG_NAME = 6</span>
+<span class="s2">    CLASS_NAME = 7</span>
+<span class="s2">    CSS_SELECTOR = 8</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">class DataType:</span>
+<span class="s2">#DIVIDER</span>
+
+<span class="s2">#DIVIDER</span>
+<span class="s2">    def __init__(self, key, value):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        self.key = key</span>
+<span class="s2">        self.value = value</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    def __repr__(self):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        return str(self.value)</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    def __index__(self):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        return int(self.key)</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">class DataObject:</span>
+<span class="s2">#DIVIDER</span>
+
+<span class="s2">#DIVIDER</span>
+<span class="s2">    def __init__(self, **kwargs):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        for key, value in kwargs.items():</span>
+<span class="s2">            setattr(self, key, DataType(key, value))</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    @staticmethod</span>
+<span class="s2">    def attr_1():</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        print(&quot;attr_1&quot;)</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    @staticmethod</span>
+<span class="s2">    def attr_2():</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        print(&quot;attr_2&quot;)</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">class UtilFunctions:</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    @staticmethod</span>
+<span class="s2">    def strip_html(data):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        logger.info(&#39;stripping HTML tags from string&#39;)</span>
+<span class="s2">        string = re.compile(r&quot;&lt;.*?&gt;|=&quot;)</span>
+<span class="s2">        return string.sub(&quot;&quot;, data)</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    @staticmethod</span>
+<span class="s2">    def remove_non_digits(seq):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        seq_type = type(seq)</span>
+<span class="s2">        return seq_type().join(filter(seq_type.isdigit, seq))</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    @staticmethod</span>
+<span class="s2">    def create_directory(dir_name):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        logger.info(&#39;Creating Directory&#39;)</span>
+<span class="s2">        Path(dir_name).mkdir(parents=True, exist_ok=True)</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    def save_html(self, url=&#39;&#39;, htmldir=&#39;&#39;, filename=&#39;&#39;, driver=None):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        logger.info(&#39;saving HTML files&#39;)</span>
+<span class="s2">        self.create_directory(htmldir)</span>
+
+<span class="s2">        if driver:</span>
+<span class="s2">            with open(f&#39;</span><span class="si">{htmldir}</span><span class="s2">/</span><span class="si">{filename}</span><span class="s2">.html&#39;, &#39;w&#39;, encoding=&#39;utf-8&#39;) as file:</span>
+<span class="s2">                file.write(driver.page_source)</span>
+<span class="s2">        else:</span>
+<span class="s2">            req = RequestsWrapper()</span>
+<span class="s2">            res = req.get(url)</span>
+<span class="s2">            with open(f&#39;</span><span class="si">{htmldir}</span><span class="s2">/</span><span class="si">{filename}</span><span class="s2">.html&#39;, &#39;w&#39;, encoding=&#39;utf-8&#39;) as file:</span>
+<span class="s2">                file.write(res.text)</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    def save_json(self, url=&#39;&#39;, jsondir=&#39;&#39;, file_name=&#39;data.json&#39; ):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        self.create_directory(jsondir)</span>
+<span class="s2">        sold_items = requests.get(url)</span>
+<span class="s2">        Path(f&#39;</span><span class="si">{jsondir}</span><span class="s2">/</span><span class="si">{file_name}</span><span class="s2">.json&#39;).write_bytes(sold_items.content)</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    @staticmethod</span>
+<span class="s2">    def is_partial_run(parser):</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        logger.info(&#39;Executing Code on Partial Run&#39;)</span>
+<span class="s2">        return parser.parse_args().run</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">    @staticmethod</span>
+<span class="s2">    def end_partial_run(fetch, header=None): #pylint: disable=unused-argument</span>
+<span class="s2">#DIVIDER</span>
+<span class="s2">        logger.info(&#39;Ending Partial Run&#39;)</span>
+<span class="s2">        fetch_arr = fetch</span>
+<span class="s2">        fetch_arr.append([&#39;#----------------------End of Partial Run---------------------#&#39;])</span>
+<span class="s2">        return fetch_arr</span>
+
+</pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-51'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-51'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-52'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-52'>#</a>
+      </div>
+      <pre><code>    get the children of the current element
+    :param tagname: you can select tag to filter the children,
+</code></pre>
+<p>e.g. if you want to search a tag, just input a
+        :return: List of ZenElement Object</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-53'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-53'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-54'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-54'>#</a>
+      </div>
+      <p>By Enumerator to make element searching same as Selenium Searching format.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-55'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-55'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-56'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-56'>#</a>
+      </div>
+      <p>Unique type class to decipher between attributes</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-57'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-57'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-58'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-58'>#</a>
+      </div>
+      <p>ORM Type Key value to add on the ORM Object</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-59'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-59'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-60'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-60'>#</a>
+      </div>
+      <p>Return value</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-61'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-61'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-62'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-62'>#</a>
+      </div>
+      <p>Return Key</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-63'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-63'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-64'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-64'>#</a>
+      </div>
+      <p>Basic ORM Class</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-65'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-65'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-66'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-66'>#</a>
+      </div>
+      <p>ORM to create classess with variables</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-67'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-67'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-68'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-68'>#</a>
+      </div>
+      <p>Adding this for Pylint issues</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-69'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-69'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-70'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-70'>#</a>
+      </div>
+      <p>Adding this for Pylint issues</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-71'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-71'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-72'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-72'>#</a>
+      </div>
+      <p>Utility Functions mostly used in Scraping</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-73'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-73'>#</a>
+      </div>
+      <p>strip html tags from the string.</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-74'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-74'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-75'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-75'>#</a>
+      </div>
+      <p>remove non digits carachter from string</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-76'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-76'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-77'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-77'>#</a>
+      </div>
+      <p>Create a directory</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-78'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-78'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-79'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-79'>#</a>
+      </div>
+      <pre><code>    :param url: url of the html page you want to save
+    :param htmldir: directory on where to save the html
+    :param filename: the filename on the saved directory
+    :param driver: this is for selenium, if driver is stated that means
+    that we will download the page from selenium, url not needed
+    :return:
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-80'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-80'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-81'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-81'>#</a>
+      </div>
+      <pre><code>    :param url: url of the html page you want to save
+    :param jsondir: directory on where to save the json
+    :param file_name: the filename on the saved directory
+    :return:
+</code></pre>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-82'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-82'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-83'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-83'>#</a>
+      </div>
+      <p>Create a Partial run based on an argument</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-84'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-84'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-85'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-85'>#</a>
+      </div>
+      <p>End Partial Run based on an argument</p>
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+  <div class='section' id='section-86'>
+    <div class='docs'>
+      <div class='octowrap'>
+        <a class='octothorpe' href='#section-86'>#</a>
+      </div>
+      
+    </div>
+    <div class='code'>
+      <div class="highlight"><pre></pre></div>
+    </div>
+  </div>
+  <div class='clearall'></div>
+</div>
+</body>
