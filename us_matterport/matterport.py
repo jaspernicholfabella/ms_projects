@@ -19,7 +19,7 @@ from pyersq.selenium_wrapper import SeleniumWrapper as SW
 
 from ms_projects.utility_scripts.zenscraper_0_3 import ZenScraper
 
-class Redfin(Runner):
+class Matterport(Runner):
     """Collect data from website"""
     def __init__(self, argv, name, headers):
         super().__init__(argv, output_prefix=name, output_subdir="raw", output_type='csv')
@@ -132,7 +132,7 @@ class Redfin(Runner):
 
 def main(argv):
     """Main entry"""
-    web = Redfin(argv)
+    web = Matterport(argv)
     web.run()
 
 if __name__ == "__main__":

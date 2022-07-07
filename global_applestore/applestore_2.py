@@ -70,7 +70,7 @@ class Applestore(Runner):
         for store_data in store_list_object_array:
             self.out.country = self.locale_to_countries[store_data['calledLocale']]
             self.out.lang = store_data['locale'].replace('_', '-')
-            if 'jp' in store_data['locale'].lower():
+            if 'kr' in store_data['locale'].lower():
                 if store_data['hasStates'] is False:
                     self.out.state = self.out.country
                     for store in store_data['store']:
