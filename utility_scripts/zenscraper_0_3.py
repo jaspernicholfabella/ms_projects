@@ -829,9 +829,9 @@ class _UtilFunctionsData:  # pylint: disable=too-few-public-methods
         :param wanted_parts: how parts should the list have
         :return: list of lists
         """
-        length = len(alist)
-        return [alist[i * length // wanted_parts: (i + 1) * length // wanted_parts]
-                for i in range(wanted_parts)]
+        chunk_size = wanted_parts
+        chunked_list = [alist[i:i + chunk_size] for i in range(0, len(alist), chunk_size)]
+        return chunked_list
 
     @staticmethod
     def df_delete_col_except(dataframe, list_of_col, exception_list=None):
