@@ -45,10 +45,10 @@ def create_files(input_dict):
 
 if __name__ == '__main__':
     input_dict = {
-        'name': 'us_opendoor_homes',
-        'description': 'US Opendoor Homes',
-        'python_file': 'opendoor.py',
-        'output_dir': 'us_ferc/',
+        'name': 'global_cbevents',
+        'description': 'RBNZ website',
+        'python_file': 'rbnz.py',
+        'output_dir': 'global_cbevents/',
         # 'date_to_run': 'run_calendar: 5thDayOfEveryQuarter',
         'date_to_run': 'days_of_week: all',
         'qa_start_time': '1:00',

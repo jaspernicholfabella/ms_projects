@@ -17,7 +17,7 @@ from dateutil.relativedelta import relativedelta
 from bs4 import BeautifulSoup
 from lxml import etree
 
-sys.path.append("../../scripts")
+sys.path.append("../../../scripts")
 from pyersq.web_runner import Runner
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
 

@@ -105,23 +105,23 @@ class Redfin(Matterport):
             else:
                 SW.get_url(driver, self.datapoints['web_search'].format(county_code), sleep_seconds=1)
 
-            # driver.find_element(SeleniumBy.XPATH, "//span[@data-content='All filters']").click()
+            driver.find_element(SeleniumBy.XPATH, "//span[@data-content='All filters']").click()
             time.sleep(2)
             try:
-                # action = ActionChains(driver)
-                # walk_score = driver.find_element(SeleniumBy.XPATH, "//span[contains(text(), 'Walk Score')]")
-                # open_house_el = driver.find_element(SeleniumBy.XPATH, "//span[contains(text(), 'Open House & Tour')]")
-                # action.move_to_element(walk_score).perform()
-                # action.click(open_house_el).perform()
-                # time.sleep(3)
-                # driver.find_element(SeleniumBy.XPATH, "//input[@name='virtualTour']").click()
-                # time.sleep(5)
-                # driver.find_element(SeleniumBy.XPATH, "//div[@class='applyButtonContainer']/button/span").click()
-                # time.sleep(3)
+                action = ActionChains(driver)
+                walk_score = driver.find_element(SeleniumBy.XPATH, "//span[contains(text(), 'Walk Score')]")
+                open_house_el = driver.find_element(SeleniumBy.XPATH, "//span[contains(text(), 'Open House & Tour')]")
+                action.move_to_element(walk_score).perform()
+                action.click(open_house_el).perform()
+                time.sleep(3)
+                driver.find_element(SeleniumBy.XPATH, "//input[@name='virtualTour']").click()
+                time.sleep(5)
+                driver.find_element(SeleniumBy.XPATH, "//div[@class='applyButtonContainer']/button/span").click()
+                time.sleep(3)
 
                 house_listings = []
                 loop_count = 0
-                while True:
+                while loop_count < 20:
                     elements = driver.find_elements(SeleniumBy.XPATH, "//div[contains(text(),'3D')]/parent::node()/parent::node()/parent::node()//a")
 
                     print(f'Gathering url ({len(house_listings)}/{amount_to_scrape})')
@@ -212,7 +212,6 @@ class Redfin(Matterport):
             return data
         except Exception as e:
             return ''
-
 
 
 def main(argv):
