@@ -28,6 +28,8 @@ from selenium.webdriver.common.action_chains import ActionChains
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 sys.path.append('../../scripts')
 from pyersq.requests_wrapper import RequestsWrapper
+from pyersq.selenium_wrapper import SeleniumWrapper as SW
+from selenium.webdriver import DesiredCapabilities
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -992,6 +994,40 @@ class _SeleniumUtils:  # pylint: disable=too-few-public-methods
             print(i)
 
         driver.save_screenshshot(save_fn)
+
+    @staticmethod
+    def get_fetch_logs(url):
+        fetch_logs = []
+        capabilities = DesiredCapabilities.CHROME
+        capabilities["goog:loggingPrefs"] = {"performance": "ALL"}
+        with SW.get_driver(desired_capabilities=capabilities) as driver:
+            SW.get_url(driver, url)
+            # fetch a site that does xhr requests
+            time.sleep(5)  # wait for the requests to take place
+            # extract requests from logs
+            logs_raw = driver.get_log("performance")
+            logs = [json.loads(lr["message"])["message"] for lr in logs_raw]
+
+            def log_filter(log_):
+                return (
+                    # is an actual response
+                        log_["method"] == "Network.responseReceived"
+                        and "json" in log_["params"]["response"]["mimeType"]
+                )
+
+            for log in filter(log_filter, logs):
+                try:
+                    request_id = log["params"]["requestId"]
+                    resp_url = log["params"]["response"]["url"]
+                    fetch_logs.append({
+                        'url':resp_url,
+                        'body':driver.execute_cdp_cmd("Network.getResponseBody", {"requestId": request_id})
+                    })
+                except Exception as e:
+                    print(e)
+
+        return fetch_logs
+
 
 
 class _SeleniumUtilsActions:

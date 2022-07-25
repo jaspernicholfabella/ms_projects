@@ -61,7 +61,8 @@ class Redfin(Matterport):
             house_listings = None
             retry_count = 0
             while house_listings is None:
-                with SW.get_driver() as driver:
+                with SW.get_driver(option_callback=ZenScraper().selenium_utils.options.set_options) as driver:
+                    ZenScraper().selenium_utils.options.override_useragent(driver)
                     if county_code != '':
                         house_listings = self.browse_web(driver, county_code, amount_to_scrape=int(amount_to_scrape[key]))
                 if retry_count == 3:
@@ -121,7 +122,7 @@ class Redfin(Matterport):
 
                 house_listings = []
                 loop_count = 0
-                while loop_count < 20:
+                while loop_count < 11:
                     elements = driver.find_elements(SeleniumBy.XPATH, "//div[contains(text(),'3D')]/parent::node()/parent::node()/parent::node()//a")
 
                     print(f'Gathering url ({len(house_listings)}/{amount_to_scrape})')
