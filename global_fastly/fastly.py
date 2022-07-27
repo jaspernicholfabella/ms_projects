@@ -1,4 +1,4 @@
-""" Robot creation for XBRL Data Extractor  """
+""" Robot creation for fastly.com website  """
 import sys
 import os
 import glob
@@ -17,41 +17,37 @@ from dateutil.relativedelta import relativedelta
 from bs4 import BeautifulSoup
 from lxml import etree
 
-sys.path.append('../../../scripts')
+sys.path.append('../../scripts')
 from pyersq.web_runner import Runner
 from pyersq.row import Row
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
 import pyersq.utils as squ
 
-from ms_projects.utility_scripts.zenscraper import ZenScraper, By, DataObject, UtilFunctions
+import ms_projects.utility_scripts.zenscraper_0_4 as zs
 
-class Xbrl_Scraper(Runner):
+class Fastly(Runner):
     """Collect data from website"""
     def __init__(self, argv):
-        super().__init__(argv, output_prefix='xbrl_scraper', output_subdir="raw", output_type='csv')
+        super().__init__(argv, output_prefix='fastly', output_subdir="raw", output_type='csv')
         self.datapoints = {
-            "out": ['FetchDate', 'Filename', 'Period', 'OperatingRevenues', 'OperatingExpenses',
-                    'Depreciation', 'Amortization', 'Grand Total'],
+            "base_url": 'https://www.fastly.com/network-map/',
+            "out": ['FetchDate'],
         }
 
         self.parser = squ.get_parser()
         self.out = Row(self.datapoints['out'])
         self.fetch_out = []
-
+        self.fetch_date = datetime.now().strftime('%m/%d/%Y')
+        self.htmldir = f"{self.outdir}/html/{datetime.now().strftime('%Y_%m_%d')}"
 
     def get_raw(self, **kwargs):
         """ Get raw data from source"""
-        xbrl_dir = os.path.abspath(f'{self.outdir}/input/xbrl')
+        zs.utils.files.create_directory(self.htmldir)
+        with SW.get_driver() as driver:
+            SW.get_url(driver, self.datapoints['base_url'])
+            time.sleep(10)
+            body = zs.selenium_utils.wait_for_element(driver, "//div[@id='tachometer-container']", 80)
 
-        list_of_file = glob.glob(f'{xbrl_dir}/*xbrl')
-
-        for file_path in list_of_file:
-            openxbrl = open(file_path, 'r')
-            doc = openxbrl.read()
-            soup = BeautifulSoup(doc, 'lxml')
-            tag_list = soup.find_all()
-            period = self.search_xbrl(tag_list, 'reportperiod')
-            
         return self.fetch_out
 
     def normalize(self, raw, **kwargs):
@@ -62,10 +58,14 @@ class Xbrl_Scraper(Runner):
         data_frame = data_frame.sort_values(by='Country', key=lambda col: col.str.lower())
         return data_frame
 
+
+@squ.timer
+@squ.retry(tries=3)
 def main(argv):
     """Main entry"""
-    web = Xbrl_Scraper(argv)
+    web = Fastly(argv)
     web.run()
 
 if __name__ == "__main__":
     main(sys.argv)
+

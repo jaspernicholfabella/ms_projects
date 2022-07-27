@@ -5,9 +5,11 @@ import requests
 import lxml.html
 from lxml import etree
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
-from .utils._strings import Strings
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
+import utils
+import selenium_utils
 from .pyersq.requests_wrapper import RequestsWrapper
+
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -191,7 +193,7 @@ class ZenElement:
         :return: filtered string
         """
         element_str = self._to_string()
-        stripped = Strings(logger).strip_html(element_str)
+        stripped = utils.strings.strip_html(element_str)
         if inner_text_filter:
             for rep in inner_text_filter:
                 stripped = stripped.replace(rep, "")

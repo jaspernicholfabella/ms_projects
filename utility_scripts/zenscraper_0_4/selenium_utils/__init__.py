@@ -1,30 +1,20 @@
 import time
-import logging
-from ._actions import Actions
-from ._options import Options
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By as SeleniumBy
 
 
-logging.basicConfig()
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.WARNING)
 
-actions = Actions(logger)
-options = Options(logger)
-
-
-def wait_for_page_load(self, driver, wait_time=30):
+def wait_for_page_load(driver, wait_time=30):
     """
     :param driver:
     :param wait_time:
     :return:
     """
-    while not self._page_is_loading(driver, wait_time=wait_time):
+    while not _page_is_loading(driver, wait_time=wait_time):
         continue
 
 
-@staticmethod
 def _page_is_loading(driver, wait_time=30):
     """
     :param driver:
@@ -41,7 +31,7 @@ def _page_is_loading(driver, wait_time=30):
     return True
 
 
-def wait_for_element(self, driver, xpath, wait_time=30):
+def wait_for_element(driver, xpath, wait_time=30):
     """
     :param driver: Selenium webdriver
     :param wait_time: wait time in seconds
@@ -50,12 +40,13 @@ def wait_for_element(self, driver, xpath, wait_time=30):
     """
     try:
         WebDriverWait(driver, wait_time).until(
-            EC.presence_of_element_located((self.SeleniumBy.XPATH, xpath)))
+            EC.presence_of_element_located((SeleniumBy.XPATH, xpath)))
     except Exception as e:
         print(e)
 
+    return driver.find_element(SeleniumBy.XPATH, xpath)
 
-@staticmethod
+
 def take_screenshot(driver, save_fn='test.png'):
     """
     get screenshot of website

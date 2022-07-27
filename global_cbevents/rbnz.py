@@ -72,9 +72,6 @@ class Rbnz(Runner):
             print(event_datetime)
 
 
-
-
-
     def normalize(self, raw, **kwargs):
         """Save raw data to file"""
         data_frame = pd.DataFrame(raw, columns=self.out.header()[:-1])

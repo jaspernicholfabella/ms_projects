@@ -45,10 +45,10 @@ def create_files(input_dict):
 
 if __name__ == '__main__':
     input_dict = {
-        'name': 'global_cbevents',
-        'description': 'RBNZ website',
-        'python_file': 'rbnz.py',
-        'output_dir': 'global_cbevents/',
+        'name': 'global_fastly',
+        'description': 'fastly.com website',
+        'python_file': 'fastly.py',
+        'output_dir': 'global_fastly/',
         # 'date_to_run': 'run_calendar: 5thDayOfEveryQuarter',
         'date_to_run': 'days_of_week: all',
         'qa_start_time': '1:00',

@@ -51,6 +51,9 @@ class @@@class_name@@@(Runner):
         data_frame = data_frame.sort_values(by='Country', key=lambda col: col.str.lower())
         return data_frame
 
+
+@squ.timer
+@squ.retry(tries=3)
 def main(argv):
     """Main entry"""
     web = @@@class_name@@@(argv)
