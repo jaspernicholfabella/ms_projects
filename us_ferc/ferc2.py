@@ -123,7 +123,7 @@ class Ferc(Runner):
         input_path = f"{self.outdir}/input/FERC_input_new.xlsx"
         to_find_data = pd.read_excel(os.path.abspath(input_path), sheet_name=2)
         company_to_find = (
-            to_find_data["Company Name (Cleaned)"].drop_duplicates().to_list()
+            to_find_data["Company Name Test"].drop_duplicates().to_list()
         )
 
         for to_find in company_to_find:

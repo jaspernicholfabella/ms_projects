@@ -23,10 +23,13 @@ from selenium.webdriver.common.by import By as SeleniumBy
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.action_chains import ActionChains
 
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 sys.path.append('../../scripts')
 from pyersq.requests_wrapper import RequestsWrapper
+from pyersq.selenium_wrapper import SeleniumWrapper as SW
+from selenium.webdriver import DesiredCapabilities
 
 logging.basicConfig()
 logger = logging.getLogger(__name__)
@@ -910,8 +913,12 @@ class _DataStream:  # pylint: disable=too-few-public-methods
 
 class _SeleniumUtils:  # pylint: disable=too-few-public-methods
     # from selenium.common.exceptions import NoSuchElementException
+    actions = None
+    options = None
 
-
+    def __init__(self):
+        self.actions = _SeleniumUtilsActions()
+        self.options = _SeleniumUtilsOptions()
 
     def wait_for_page_load(self, driver, wait_time=30):
         """
@@ -947,7 +954,119 @@ class _SeleniumUtils:  # pylint: disable=too-few-public-methods
         """
         try:
             WebDriverWait(driver, wait_time).until(
-            EC.presence_of_element_located((self.SeleniumBy.XPATH, xpath)))
+            EC.presence_of_element_located((SeleniumBy.XPATH, xpath)))
         except Exception as e:
             print(e)
 
+    @staticmethod
+    def take_screenshot(driver, save_fn='test.png'):
+        """
+        get screenshot of website
+        :param driver: selenium webdriver
+        :param save_fn: save file location
+        :return:
+        """
+        driver.execute_script("""
+        (function () {
+            var y = 0;
+            var step = 100;
+            window.scroll(0, 0)
+            
+            function f() {
+                if(y < document.body.scrollHeight){
+                    y += step;
+                    window.scroll(0, y);
+                    setTimeout(f, 100);
+                } else {
+                    window.scroll(0, 0);
+                    document.title += "scroll-done";
+                }
+            }
+            
+            setTimeout(f, 1000);
+        })();
+        """)
+
+        for i in range(30):
+            if 'scroll-done' in driver.title:
+                break
+            time.sleep(10)
+            print(i)
+
+        driver.save_screenshshot(save_fn)
+
+    @staticmethod
+    def get_fetch_logs(url):
+        fetch_logs = []
+        capabilities = DesiredCapabilities.CHROME
+        capabilities["goog:loggingPrefs"] = {"performance": "ALL"}
+        with SW.get_driver(desired_capabilities=capabilities) as driver:
+            SW.get_url(driver, url)
+            # fetch a site that does xhr requests
+            time.sleep(5)  # wait for the requests to take place
+            # extract requests from logs
+            logs_raw = driver.get_log("performance")
+            logs = [json.loads(lr["message"])["message"] for lr in logs_raw]
+
+            def log_filter(log_):
+                return (
+                    # is an actual response
+                        log_["method"] == "Network.responseReceived"
+                        and "json" in log_["params"]["response"]["mimeType"]
+                )
+
+            for log in filter(log_filter, logs):
+                try:
+                    request_id = log["params"]["requestId"]
+                    resp_url = log["params"]["response"]["url"]
+                    fetch_logs.append({
+                        'url':resp_url,
+                        'body':driver.execute_cdp_cmd("Network.getResponseBody", {"requestId": request_id})
+                    })
+                except Exception as e:
+                    print(e)
+
+        return fetch_logs
+
+
+
+class _SeleniumUtilsActions:
+    """Action Chains & Form Action"""
+
+    def send_keys(self, driver, key):
+        action = ActionChains(driver)
+
+    def move_to_and_click(self, driver, move_to='', click=''):
+        try:
+            action = ActionChains(driver)
+            element_move_to = driver.find_element(SeleniumBy.XPATH. move_to)
+            if click != '':
+                element_click = driver.find_element(SeleniumBy.XPATH, click)
+            else:
+                element_click = element_move_to
+
+            action.move_to_element(element_move_to).perform()
+            action.click(element_click).perform()
+        except Exception as e:
+            logger.error
+
+class _SeleniumUtilsOptions:
+
+
+    def __init__(self):
+        self.user_agent = 'Mozzilla/5.0 (Windows NT 10.0; WOW64) AppleWebkit/537.36 (KHTML, like Gecko) Chrome/92.0.4515.131 Safari/537.36'
+
+    @staticmethod
+    def set_options(opts, *args):
+        opts.add_argument("--disable-blink-features=AutomationControlled")
+        opts.add_argument("--disable-dev-shm-usage")
+        opts.add_argument("--lang=en_US")
+        opts.add_argument("--disable-gpu")
+
+        if len(args) != 0:
+            for val in args:
+                opts.add_argument(val)
+
+
+    def override_useragent(self, driver):
+        driver.execute_cdp_cmd('Network.setUserAgentOverride', {'userAgent': self.user_agent})
