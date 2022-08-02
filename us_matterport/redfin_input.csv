@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 State,County,Amount
 California,Los Angeles County,403
 Illinois,Cook County,212
@@ -30,4 +31,38 @@ New Jersey,Bergen County,40
 California,San Francisco County,34
 District of Columbia,District of Columbia,28
 California,San Francisco County,34
+=======
+State,County,Amount
+California,Los Angeles County,403
+Illinois,Cook County,212
+Texas,Harris County,194
+Arizona,Maricopa County,185
+Florida,Miami-Dade County,110
+New York,Kings County,109
+Texas,Dallas County,106
+Nevada,Clark County,94
+Washington,King County,93
+Michigan,Wayne County,73
+Massachusetts,Middlesex County,67
+New York,New York County,65
+Pennsylvania,Philadelphia County,65
+Ohio,Franklin County,55
+Michigan,Oakland County,53
+Minnesota,Hennepin County,52
+Utah,Salt Lake County,49
+North Carolina,Wake County,48
+Virginia,Fairfax County,47
+Georgia,Fulton County,44
+Maryland,Montogomery County,44
+Arizona,Pima County,44
+Hawaii,Honolulu County,41
+Missouri,St. Louis County,41
+Indiana,Marion County,40
+Georgia,Gwinnet County,40
+Connecticut,Fairfield County,40
+New Jersey,Bergen County,40
+California,San Francisco County,34
+District of Columbia,District of Columbia,28
+California,San Francisco County,34
+>>>>>>> 9c7a2ecb38c8c26c66a48d4e0105990ca3cfbfd4
 District of Columbia,District of Columbia,28
