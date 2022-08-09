@@ -11,7 +11,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
-sys.path.append('../../scripts')
+sys.path.append('../../../scripts')
 from pyersq.web_runner import Runner
 from pyersq.row import Row
 import pyersq.utils as squ

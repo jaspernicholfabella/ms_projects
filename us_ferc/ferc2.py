@@ -21,38 +21,7 @@ sys.path.append("../../scripts")
 from pyersq.web_runner import Runner
 from pyersq.selenium_wrapper import SeleniumWrapper as SW
 
-
-class ORMType:
-    """ Unique type class to decipher between attributes """
-
-    def __init__(self, key, value):
-        self.key = key
-        self.value = value
-
-    def __repr__(self):
-        return str(self.value)
-
-    def __index__(self):
-        return int(self.key)
-
-
-class ORM:
-    """Basic ORM Class"""
-
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, ORMType(key, value))
-
-    @staticmethod
-    def attr_1():
-        """ Adding this for Pylint issues """
-        print("attr_1")
-
-    @staticmethod
-    def attr_2():
-        """ Adding this for Pylint issues """
-        print("attr_2")
-
+from ms_projects.utility_scripts.zenscraper_0_3 import ZenScraper
 
 class Ferc(Runner):
     """Collect data from website"""
@@ -79,6 +48,8 @@ class Ferc(Runner):
                 "Operating Expenses",
                 "Depreciation",
                 "Amortization",
+                "Crude Oil Total",
+                "Products Total",
                 "Grand Total",
                 "Download File Location",
             ],
@@ -94,11 +65,13 @@ class Ferc(Runner):
                 "/parent::node()/parent::node()/parent::tr/td",
                 "period": "//div[contains(text(), 'Year/Period of Report')]"
                 "/parent::node()/parent::node()/td",
+                "total_crude_oil": "//td[normalize-space(text()) = 'CRUDE OIL']/parent::node()/following-sibling::tr/td[contains(text(), 'TOTAL')]/parent::node()",
+                "total_products": "//td[normalize-space(text()) = 'PRODUCTS']/parent::node()/following-sibling::tr/td[contains(text(), 'TOTAL')]/parent::node()",
                 "grand_total": "//td[contains(text(), 'GRAND TOTAL')]/parent::node()/td",
             },
         }
-        self.form6 = ORM()
-        self.form6Q = ORM()
+        self.form6 = ZenScraper().datastream.DataObject()
+        self.form6Q = ZenScraper().datastream.DataObject()
         self.form6.out_data = []
         self.form6Q.out_data = []
         self.form6.status_count = {
@@ -114,16 +87,15 @@ class Ferc(Runner):
             "failed": 0,
         }
         self.row_data = []
-        self.block = ORM()
+        self.block = ZenScraper().datastream.DataObject()
         self.block.form = ""
         self.block.status = ""
 
     def get_raw(self, **kwargs):
         """ Get raw data from source"""
-        input_path = f"{self.outdir}/input/FERC_input_new.xlsx"
-        to_find_data = pd.read_excel(os.path.abspath(input_path), sheet_name=2)
-        company_to_find = (
-            to_find_data["Company Name Test"].drop_duplicates().to_list()
+        company_to_find = ZenScraper().utils.files.get_input_file(
+            f"{self.outdir}/input/ferc_input.csv",
+            header='Company'
         )
 
         for to_find in company_to_find:
@@ -252,6 +224,12 @@ class Ferc(Runner):
                         dom, 2, self.datapoints["xpath_for_mining"]["amortization"]
                     ),
                     self.search_downloaded_html(
+                        dom, 10, self.datapoints["xpath_for_mining"]["total_crude_oil"], is_first=True
+                    ),
+                    self.search_downloaded_html(
+                        dom, 10, self.datapoints["xpath_for_mining"]["total_products"], is_first=True
+                    ),
+                    self.search_downloaded_html(
                         dom, 10, self.datapoints["xpath_for_mining"]["grand_total"]
                     ),
                     str(download_dir),
@@ -261,27 +239,38 @@ class Ferc(Runner):
 
     def navigate_form(self, driver, to_find):
         """navigation on the html form"""
-        url = self.datapoints["base_url"]
-        sleep_seconds = random.randint(1, 5)
-        SW.get_url(driver, url, sleep_seconds=sleep_seconds)
-        driver.find_element(By.XPATH, "//input[@name='textsearch']").send_keys(to_find)
-        element_date_start = driver.find_element(By.XPATH, "//input[@name='dFROM']")
-        date = datetime.now() - relativedelta(months=+12)
-        element_date_start.send_keys(Keys.CONTROL, "a")
-        element_date_start.send_keys(date.strftime("%m/%d/%Y"))
-        driver.find_element(By.XPATH, "//button[contains(@class, 'toggle')]").click()
-        element_filter = driver.find_element(By.XPATH, "//input[@placeholder='Filter']")
-        element_filter.clear()
-        element_filter.send_keys("Form 6")
-        if self.block.form == "form6":
-            driver.find_element(
-                By.XPATH, "//label[contains(text(),'Form 6')]/parent::node()/input"
-            ).click()
-        elif self.block.form == "form6Q":
-            driver.find_element(
-                By.XPATH, "//label[contains(text(),'Form 6-Q')]/parent::node()/input"
-            ).click()
-        driver.find_element(By.ID, "submit").click()
+        for _ in range(5):
+            try:
+                url = self.datapoints["base_url"]
+                sleep_seconds = random.randint(1, 5)
+                SW.get_url(driver, url, sleep_seconds=sleep_seconds)
+                WebDriverWait(driver, 30).until(
+                    EC.presence_of_element_located((By.XPATH, "//input[@name='textsearch']"))
+                )
+                driver.find_element(By.XPATH, "//input[@name='textsearch']").send_keys(to_find)
+                element_date_start = driver.find_element(By.XPATH, "//input[@name='dFROM']")
+                date = datetime.now() - relativedelta(months=+12)
+                element_date_start.send_keys(Keys.CONTROL, "a")
+                element_date_start.send_keys(date.strftime("%m/%d/%Y"))
+                driver.find_element(By.XPATH, "//button[contains(@class, 'toggle')]").click()
+                element_filter = driver.find_element(By.XPATH, "//input[@placeholder='Filter']")
+                element_filter.clear()
+                element_filter.send_keys("Form 6")
+                time.sleep(2)
+                if self.block.form == "form6":
+                    driver.find_element(
+                        By.XPATH, "//label[contains(text(),'Form 6')]/parent::node()/input"
+                    ).click()
+                elif self.block.form == "form6Q":
+                    driver.find_element(
+                        By.XPATH, "//label[contains(text(),'Form 6-Q')]/parent::node()/input"
+                    ).click()
+                driver.find_element(By.ID, "submit").click()
+                break
+            except Exception as e:
+                print(e)
+                time.sleep(5)
+
 
     def mining_details(self, driver, to_find, status_count):
         """mining table result from navigation"""
@@ -328,7 +317,7 @@ class Ferc(Runner):
         else:
             self.block.status = "nodata - name not on description"
             status_count["nodata"] += 1
-            self.row_data = ["" for _ in range(0, 12)]
+            self.row_data = ["" for _ in range(0, 14)]
 
         return data_element
 
@@ -422,15 +411,34 @@ class Ferc(Runner):
         return text.lower()
 
     @staticmethod
-    def search_downloaded_html(dom, delimiter, xpath):
+    def search_downloaded_html(dom, delimiter, xpath, is_first=False):
         """ Search element from the downloaded file """
-        elements = dom.xpath(xpath)
-        for count, element in enumerate(elements):
-            if count == delimiter:
-                text = str(etree.tostring(element)).replace("b'", "")[:-1]
-                strip_html = re.compile(r"<.*?>|=")
-                return " ".join(str(strip_html.sub("", text)).split())
-        return ""
+        try:
+            if is_first:
+                try:
+                    elements = dom.xpath(xpath)[0]
+                    for count, element in enumerate(elements):
+                        if count == delimiter:
+                            text = str(etree.tostring(element)).replace("b'", "")[:-1]
+                            strip_html = re.compile(r"<.*?>|=")
+                            return " ".join(str(strip_html.sub("", text)).split())
+                except:
+                    elements = dom.xpath(xpath)[1]
+                    for count, element in enumerate(elements):
+                        if count == delimiter:
+                            text = str(etree.tostring(element)).replace("b'", "")[:-1]
+                            strip_html = re.compile(r"<.*?>|=")
+                            return " ".join(str(strip_html.sub("", text)).split())
+            else:
+                elements = dom.xpath(xpath)
+            for count, element in enumerate(elements):
+                if count == delimiter:
+                    text = str(etree.tostring(element)).replace("b'", "")[:-1]
+                    strip_html = re.compile(r"<.*?>|=")
+                    return " ".join(str(strip_html.sub("", text)).split())
+            return ""
+        except Exception as e:
+            return ""
 
 
 def main(argv):
